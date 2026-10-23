@@ -1,22 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CandidateVideo } from '../types';
-import { GENERIC_VIDEO_THUMBNAIL } from '../data/[Unit]
-Description=P2P Recruitment Portal
-After=network.target postgresql.service
-Wants=postgresql.service
-
-[Service]
-Type=simple
-User=p2papp
-Group=p2papp
-WorkingDirectory=/opt/p2p-portal/app
-EnvironmentFile=/etc/p2p-portal.env
-ExecStart=/usr/bin/npm start
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target';
+import { GENERIC_VIDEO_THUMBNAIL } from '../data/placeholders';
 import { groupVideosBySubmission } from '../utils/submissions';
 
 interface AllVideosViewProps {
