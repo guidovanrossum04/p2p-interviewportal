@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { CandidateVideo, RubricWeight } from '../types';
-import { GENERIC_AVATAR, GENERIC_VIDEO_THUMBNAIL } from '../data/placeholders';
+import { GENERIC_VIDEO_THUMBNAIL } from '../data/placeholders';
 
 interface VideoPlayerEvaluationModalProps {
   video: CandidateVideo;
@@ -20,14 +20,6 @@ interface VideoPlayerEvaluationModalProps {
     notes: string;
   }) => Promise<void>;
 }
-
-// Fallback high-availability video mirrors
-const FALLBACK_VIDEO_SOURCES = [
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  'https://vjs.zencdn.net/v/oceans.mp4',
-  'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-];
 
 export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProps> = ({
   video,
@@ -50,8 +42,9 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
   const [duration, setDuration] = useState(video.durationSeconds || 300);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [useSimulationMode, setUseSimulationMode] = useState(false);
-  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   // Form states
   const [scores, setScores] = useState<Record<string, number>>(() =>
@@ -72,19 +65,37 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
   const [isSavingAdminReview, setIsSavingAdminReview] = useState(false);
 
   useEffect(() => {
-    setAdminFeedback(video.adminFeedback || '');
-    setReviewStatus(video.adminReviewStatus || 'pending');
     setDecision(video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject' ? 'rejected' : 'selected');
     setSubmissionError(null);
     setCurrentTime(0);
     setDuration(video.durationSeconds || 300);
-    setCurrentSourceIndex(0);
     setUseSimulationMode(false);
+    setPlaybackError(null);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.load();
     }
   }, [video.id]);
+
+  useEffect(() => {
+    setAdminFeedback(video.adminFeedback || '');
+    setReviewStatus(video.adminReviewStatus || 'pending');
+  }, [video.id, video.adminConfirmed, video.adminFeedback, video.adminReviewStatus]);
+
+  useEffect(() => {
+    setIsMuted(false);
+    setVolume(1);
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.volume = 1;
+    }
+  }, [video.id]);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    videoRef.current.muted = isMuted || volume === 0;
+    videoRef.current.volume = volume;
+  }, [isMuted, volume, video.id]);
 
   const overallScore = Math.round(
     rubricWeights.reduce((total, criterion) => total + (scores[criterion.id] || 1) * criterion.weight, 0) / 5
@@ -131,7 +142,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
       const height = canvas.height;
 
       // Dark studio background
-      ctx.fillStyle = '#0B0F19';
+      ctx.fillStyle = '#101010';
       ctx.fillRect(0, 0, width, height);
 
       // Draw subtle grid lines
@@ -165,8 +176,8 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
           : 6;
 
         const gradient = ctx.createLinearGradient(0, centerY - dynamicHeight, 0, centerY + dynamicHeight);
-        gradient.addColorStop(0, '#EF4444');
-        gradient.addColorStop(1, '#B91C1C');
+        gradient.addColorStop(0, '#D81F27');
+        gradient.addColorStop(1, '#A5121A');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -185,16 +196,12 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
     };
   }, [useSimulationMode, isPlaying, playbackRate]);
 
-  // Video error handler with automatic fallback
-  const handleVideoError = useCallback(() => {
-    console.warn(`Direct video source failed for ${video.candidateName}. Attempting fallback mirror.`);
-    if (currentSourceIndex < FALLBACK_VIDEO_SOURCES.length - 1) {
-      setCurrentSourceIndex((prev) => prev + 1);
-    } else {
-      // Seamlessly switch to Interactive Video Simulator
-      setUseSimulationMode(true);
-    }
-  }, [currentSourceIndex, video.candidateName]);
+  const handleVideoError = () => {
+    const mediaError = videoRef.current?.error;
+    console.error(`Could not play the submitted video for ${video.candidateName}.`, mediaError);
+    setPlaybackError('This uploaded video could not be played. Try refreshing the page or re-uploading it.');
+    setIsPlaying(false);
+  };
 
   const togglePlay = () => {
     if (useSimulationMode) {
@@ -207,10 +214,13 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
           playPromise
-            .then(() => setIsPlaying(true))
-            .catch(() => {
-              setUseSimulationMode(true);
+            .then(() => {
+              setPlaybackError(null);
               setIsPlaying(true);
+            })
+            .catch((error: unknown) => {
+              console.error('Could not start playback for the submitted video.', error);
+              setPlaybackError('Could not start video playback. Use the player controls to try again.');
             });
         }
       }
@@ -236,9 +246,12 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
     if (!useSimulationMode && videoRef.current) {
       videoRef.current.currentTime = seconds;
       if (!isPlaying) {
-        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {
-          setUseSimulationMode(true);
+        videoRef.current.play().then(() => {
+          setPlaybackError(null);
           setIsPlaying(true);
+        }).catch((error: unknown) => {
+          console.error('Could not seek and play the submitted video.', error);
+          setPlaybackError('Could not start video playback. Use the player controls to try again.');
         });
       }
     } else {
@@ -291,8 +304,6 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
     }
   };
 
-  const activeVideoUrl = currentSourceIndex === 0 ? video.videoUrl : FALLBACK_VIDEO_SOURCES[currentSourceIndex];
-
   const toggleFullscreen = async () => {
     const mediaContainer = mediaContainerRef.current;
     if (!mediaContainer) return;
@@ -326,16 +337,16 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
       id="video-evaluation-modal"
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
     >
-      <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-[#F5DADB] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-[#E8E5E1] animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#F5DADB] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
+        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               {video.candidateName.slice(0, 2).toUpperCase()}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-[#1F1617]">{video.candidateName}</h3>
+                <h3 className="font-bold text-sm text-[#101010]">{video.candidateName}</h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase border border-red-200">
                   {video.roleApplied}
                 </span>
@@ -343,9 +354,8 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                   <span className="text-xs text-red-900/60">• {video.department}</span>
                 )}
               </div>
-              <p className="text-xs text-red-900/60 mt-0.5">
-                Submission: {video.submissionId || video.submissionBatchId || video.id} • Submitted {video.submittedTimeAgo}
-              </p>
+              <p className="text-xs text-red-900/60 mt-0.5">Submitted {video.submittedTimeAgo}</p>
+              {video.questionPrompt && <p className="mt-1 max-w-2xl text-xs text-[#101010]">{video.questionPrompt}</p>}
             </div>
           </div>
 
@@ -358,7 +368,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
             )}
             <button
               onClick={onClose}
-              className="p-2 text-[#6B7280] hover:text-red-700 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
+              className="p-2 text-[#8A8580] hover:text-red-700 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
@@ -368,7 +378,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
         {/* Modal Body: 2 Columns (Left Video Player & Candidate Profile, Right Evaluation Rubric) */}
         <div className={`flex-1 grid grid-cols-1 ${hasVideoPicker || !readOnly ? 'lg:grid-cols-12' : ''} overflow-y-auto`}>
           {hasVideoPicker && (
-            <aside className="lg:col-span-2 border-r border-[#F5DADB] bg-red-50/30 p-3 space-y-2">
+            <aside className="lg:col-span-2 border-r border-[#E8E5E1] bg-red-50/30 p-3 space-y-2">
               <h4 className="px-1 text-[10px] font-bold uppercase tracking-wider text-red-900/60">Submission videos</h4>
               {submissionVideos.map((submissionVideo, index) => (
                 <button
@@ -381,8 +391,8 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                       : 'border-transparent bg-white/60 hover:border-red-200'
                   }`}
                 >
-                  <span className="block text-[10px] font-bold text-[#1F1617]">Video {index + 1}</span>
-                  <span className="mt-0.5 block text-[9px] text-[#6B7280]">
+                  <span className="block text-[10px] font-bold text-[#101010]">Video {index + 1}</span>
+                  <span className="mt-0.5 block text-[9px] text-[#8A8580]">
                     {submissionVideo.status === 'completed'
                       ? `Reviewed · ${submissionVideo.evaluation?.decision || 'scored'}`
                       : 'Awaiting review'}
@@ -392,18 +402,22 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
             </aside>
           )}
           {/* Left Column: Video Player + Candidate Profile (7 cols) */}
-          <div className={`${readOnly ? hasVideoPicker ? 'lg:col-span-10' : '' : submissionVideos.length > 1 ? 'lg:col-span-6' : 'lg:col-span-7'} p-6 ${readOnly ? '' : 'border-r border-[#F5DADB]'} flex flex-col gap-5 bg-white`}>
+          <div className={`${readOnly ? hasVideoPicker ? 'lg:col-span-10' : '' : submissionVideos.length > 1 ? 'lg:col-span-6' : 'lg:col-span-7'} p-6 ${readOnly ? '' : 'border-r border-[#E8E5E1]'} flex flex-col gap-5 bg-white`}>
             {/* Video Player Card */}
             <div ref={mediaContainerRef} className="relative rounded-2xl overflow-hidden bg-black aspect-video flex flex-col justify-end shadow-xs group select-none">
               {!useSimulationMode ? (
                 <video
                   ref={videoRef}
-                  src={activeVideoUrl}
+                  src={video.videoUrl}
                   poster={video.thumbnailUrl || GENERIC_VIDEO_THUMBNAIL}
                   onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
+                  onLoadedMetadata={() => {
+                    setPlaybackError(null);
+                    handleLoadedMetadata();
+                  }}
                   onEnded={() => setIsPlaying(false)}
                   onError={handleVideoError}
+                  onCanPlay={() => setPlaybackError(null)}
                   className="w-full h-full object-cover"
                   playsInline
                   muted={isMuted}
@@ -411,28 +425,15 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
               ) : (
                 <div className="relative w-full h-full">
                   <canvas ref={canvasRef} width={640} height={360} className="w-full h-full object-cover" />
-                  
-                  {/* Candidate Portrait Video Overlay */}
-                  <div className="absolute top-4 left-4 flex items-center gap-3 bg-black/60 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10">
-                    <img
-                      src={video.thumbnailUrl || GENERIC_AVATAR}
-                      alt={video.candidateName}
-                      className="w-9 h-9 rounded-full object-cover border border-white/20"
-                    />
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span className="text-white text-xs font-bold">{video.candidateName}</span>
-                      </div>
-                      <span className="text-[10px] text-gray-300 block">{video.roleApplied}</span>
-                    </div>
+                  <div className="absolute inset-x-4 top-4 rounded-lg bg-black/80 px-3 py-2 text-center text-xs font-semibold text-white">
+                    Demo animation — this is not the candidate&apos;s submitted video.
                   </div>
+                </div>
+              )}
 
-                  {/* REC timestamp & format watermark */}
-                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-mono text-white flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                    <span>REC {formatSeconds(currentTime)} • 1080p 60fps</span>
-                  </div>
+              {playbackError && !useSimulationMode && (
+                <div role="alert" className="absolute inset-x-4 bottom-16 rounded-lg bg-black/80 px-3 py-2 text-center text-xs text-white">
+                  {playbackError}
                 </div>
               )}
 
@@ -463,14 +464,36 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
 
                     <button
                       type="button"
-                      onClick={() => setIsMuted(!isMuted)}
+                      onClick={() => {
+                        if (isMuted || volume === 0) {
+                          setIsMuted(false);
+                          setVolume((currentVolume) => currentVolume || 1);
+                        } else {
+                          setIsMuted(true);
+                        }
+                      }}
                       className="p-1 hover:bg-white/20 rounded-full transition-colors text-white cursor-pointer"
-                      title={isMuted ? 'Unmute' : 'Mute'}
+                      title={isMuted || volume === 0 ? 'Unmute' : 'Mute'}
                     >
                       <span className="material-symbols-outlined text-lg">
-                        {isMuted ? 'volume_off' : 'volume_up'}
+                        {isMuted || volume === 0 ? 'volume_off' : 'volume_up'}
                       </span>
                     </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={isMuted ? 0 : volume}
+                      aria-label="Video volume"
+                      title="Video volume"
+                      onChange={(event) => {
+                        const nextVolume = Number(event.target.value);
+                        setVolume(nextVolume);
+                        setIsMuted(nextVolume === 0);
+                      }}
+                      className="w-16 accent-white"
+                    />
 
                     <span className="font-mono text-xs">
                       {formatSeconds(currentTime)} / {formatSeconds(duration)}
@@ -489,12 +512,18 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     {/* Switch Mode Button */}
                     <button
                       type="button"
-                      onClick={() => setUseSimulationMode(!useSimulationMode)}
+                      onClick={() => {
+                        if (!useSimulationMode) videoRef.current?.pause();
+                        setIsPlaying(false);
+                        setPlaybackError(null);
+                        setUseSimulationMode((current) => !current);
+                      }}
+                      aria-pressed={useSimulationMode}
                       className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer mr-1 hidden sm:inline-flex items-center gap-1"
-                      title="Toggle between Direct Video Feed and Simulated Stream"
+                      title="Show a demo animation instead of the candidate's submitted video"
                     >
                       <span className="material-symbols-outlined text-[12px]">tune</span>
-                      {useSimulationMode ? 'Sim Stream' : 'Live Stream'}
+                      {useSimulationMode ? 'Exit demo' : 'Demo animation'}
                     </button>
 
                     <span className="text-[11px] text-gray-300">Speed:</span>
@@ -516,48 +545,48 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
             </div>
 
             {/* Candidate Submission Profile & Assessment Overview */}
-            <div className="bg-[#FAF4F4] rounded-2xl border border-[#F5DADB] p-4 space-y-4">
-              <div className="flex items-center justify-between border-b border-[#F5DADB] pb-3">
+            <div className="bg-[#F5F2EE] rounded-2xl border border-[#E8E5E1] p-4 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E8E5E1] pb-3">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-red-600 text-lg">badge</span>
-                  <h4 className="font-bold text-xs text-[#1F1617] uppercase tracking-wider">Candidate Submission Overview</h4>
+                  <h4 className="font-bold text-xs text-[#101010] uppercase tracking-wider">Candidate Submission Overview</h4>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-white border border-[#F5DADB] text-red-700 text-[10px] font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-white border border-[#E8E5E1] text-red-700 text-[10px] font-bold">
                   {video.submissionType === 'self_introduction' ? 'Self-Introduction Video' : 'Video Assessment'}
                 </span>
               </div>
 
               {/* Candidate Info Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                <div className="bg-white p-3 rounded-xl border border-[#F5DADB]">
+                <div className="bg-white p-3 rounded-xl border border-[#E8E5E1]">
                   <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block mb-0.5">Applicant</span>
-                  <p className="font-bold text-[#1F1617] truncate">{video.candidateName}</p>
-                  <p className="text-[11px] text-[#6B7280] truncate">{video.candidateEmail}</p>
+                  <p className="font-bold text-[#101010] truncate">{video.candidateName}</p>
+                  <p className="text-[11px] text-[#8A8580] truncate">{video.candidateEmail}</p>
                 </div>
 
-                <div className="bg-white p-3 rounded-xl border border-[#F5DADB]">
+                <div className="bg-white p-3 rounded-xl border border-[#E8E5E1]">
                   <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block mb-0.5">Applied Position</span>
-                  <p className="font-bold text-[#1F1617] truncate">{video.roleApplied}</p>
-                  <p className="text-[11px] text-[#6B7280]">{video.department || 'Engineering'}</p>
+                  <p className="font-bold text-[#101010] truncate">{video.roleApplied}</p>
+                  <p className="text-[11px] text-[#8A8580]">{video.department || 'Engineering'}</p>
                 </div>
 
-                <div className="bg-white p-3 rounded-xl border border-[#F5DADB]">
+                <div className="bg-white p-3 rounded-xl border border-[#E8E5E1]">
                   <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block mb-0.5">Experience & Batch</span>
-                  <p className="font-bold text-[#1F1617]">{video.experienceYears ? `${video.experienceYears}+ Yrs` : 'Experienced'}</p>
-                  <p className="text-[11px] text-[#6B7280] truncate">{video.batchName || 'General Queue'}</p>
+                  <p className="font-bold text-[#101010]">{video.experienceYears ? `${video.experienceYears}+ Yrs` : 'Experienced'}</p>
+                  <p className="text-[11px] text-[#8A8580] truncate">{video.batchName || 'General Queue'}</p>
                 </div>
               </div>
 
               {video.documents && video.documents.length > 0 && (
-                <div className="bg-white p-3 rounded-xl border border-[#F5DADB] space-y-2">
+                <div className="bg-white p-3 rounded-xl border border-[#E8E5E1] space-y-2">
                   <div className="flex justify-between items-center gap-3">
                     <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider">Supporting Documents</span>
-                    <span className="text-[10px] text-[#6B7280]">{video.documents.length} files</span>
+                    <span className="text-[10px] text-[#8A8580]">{video.documents.length} files</span>
                   </div>
                   <div className="divide-y divide-red-50">
                     {video.documents.map((document) => (
                       <div key={document.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                        <span className="text-[11px] font-medium text-[#1F1617] truncate">{document.name}</span>
+                        <span className="text-[11px] font-medium text-[#101010] truncate">{document.name}</span>
                         <span className="flex items-center gap-3 shrink-0">
                           <a href={document.url} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-red-700 hover:underline">View</a>
                           <a href={document.downloadUrl || document.url} download={document.name} className="text-[11px] font-semibold text-red-700 hover:underline">Download</a>
@@ -569,15 +598,16 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
               )}
 
               {canReviewSubmission && (
-                <div className="rounded-xl border border-[#F5DADB] bg-white p-3 space-y-2">
+                <div className="rounded-xl border border-[#E8E5E1] bg-white p-3 space-y-2">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-[#1F1617]">
-                      {reviewStatus === 'accepted' ? 'Approved for Manager / Employer verification' : reviewStatus === 'reupload_requested' ? 'Reupload requested' : 'Awaiting admin review'}
+                    <span className="text-xs font-semibold text-[#101010]">
+                      {reviewStatus === 'accepted' || video.adminConfirmed
+                        ? 'Approved for Manager / Employer verification'
+                        : reviewStatus === 'reupload_requested' ? 'Reupload requested' : 'Awaiting admin review'}
                     </span>
-                    {video.submissionBatchId && <span className="text-[10px] text-[#6B7280]">Uploaded with this submission batch</span>}
                   </div>
-                  <p className="text-[11px] text-[#6B7280]">The candidate will be emailed automatically when you submit this review.</p>
-                  <label className="block text-[11px] font-semibold text-[#1F1617]" htmlFor="admin-review-feedback">Feedback for candidate</label>
+                  <p className="text-[11px] text-[#8A8580]">The candidate will be emailed automatically when you submit this review.</p>
+                  <label className="block text-[11px] font-semibold text-[#101010]" htmlFor="admin-review-feedback">Feedback for candidate</label>
                   <textarea
                     id="admin-review-feedback"
                     rows={3}
@@ -585,7 +615,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     value={adminFeedback}
                     onChange={(event) => setAdminFeedback(event.target.value)}
                     placeholder="Explain why the video is accepted or what needs to change..."
-                    className="w-full rounded-lg border border-[#F5DADB] p-2.5 text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none"
+                    className="w-full rounded-lg border border-[#E8E5E1] p-2.5 text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -612,20 +642,20 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
           </div>
 
           {!readOnly && (
-          <div className={`${submissionVideos.length > 1 ? 'lg:col-span-4' : 'lg:col-span-5'} p-6 bg-[#FAF4F4]/60 flex flex-col justify-between overflow-y-auto`}>
+          <div className={`${submissionVideos.length > 1 ? 'lg:col-span-4' : 'lg:col-span-5'} p-6 bg-[#F5F2EE]/60 flex flex-col justify-between overflow-y-auto`}>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <h4 className="font-bold text-xs text-[#1F1617] mb-1">Standard Evaluation Rubric</h4>
+                <h4 className="font-bold text-xs text-[#101010] mb-1">Standard Evaluation Rubric</h4>
                 <p className="text-xs text-red-900/60">
                   This rubric is shared across all videos in the submission. Your scores and decision will apply to every video.
                 </p>
               </div>
 
               {rubricWeights.map((criterion, index) => (
-                <div key={criterion.id} className="bg-white p-3.5 rounded-2xl border border-[#F5DADB] shadow-xs">
+                <div key={criterion.id} className="bg-white p-3.5 rounded-2xl border border-[#E8E5E1] shadow-xs">
                   <div className="flex justify-between items-center mb-2">
-                    <label htmlFor={`rubric-${criterion.id}`} className="text-xs font-semibold text-[#1F1617]">
-                      {index + 1}. {criterion.name} <span className="text-[#6B7280]">({criterion.weight}%)</span>
+                    <label htmlFor={`rubric-${criterion.id}`} className="text-xs font-semibold text-[#101010]">
+                      {index + 1}. {criterion.name} <span className="text-[#8A8580]">({criterion.weight}%)</span>
                     </label>
                     <span className="text-xs font-extrabold text-red-600">{scores[criterion.id]} / 5</span>
                   </div>
@@ -639,7 +669,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     onChange={(e) => setScores((previous) => ({ ...previous, [criterion.id]: Number(e.target.value) }))}
                     className="w-full accent-red-600 cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-[#6B7280] mt-1">
+                  <div className="flex justify-between text-[10px] text-[#8A8580] mt-1">
                     <span>Unsatisfactory</span>
                     <span>Adequate</span>
                     <span className="font-medium text-red-700">Exemplary</span>
@@ -649,7 +679,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
 
               {/* Review Notes */}
               <div>
-                <label className="block text-xs font-semibold text-[#1F1617] mb-1.5">
+                <label className="block text-xs font-semibold text-[#101010] mb-1.5">
                   Manager / Employer Observations & Feedback
                 </label>
                 <textarea
@@ -657,13 +687,13 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Record specific strengths, potential concerns, and rationale for your scoring..."
-                  className="w-full rounded-xl border border-[#F5DADB] p-3 text-xs text-[#1F1617] bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-[#E8E5E1] p-3 text-xs text-[#101010] bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all"
                 />
               </div>
 
               {/* Hiring Decision */}
               <div>
-                <label className="block text-xs font-semibold text-[#1F1617] mb-2">Decision</label>
+                <label className="block text-xs font-semibold text-[#101010] mb-2">Decision</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -671,7 +701,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                       decision === 'selected'
                         ? 'bg-emerald-700 text-white shadow-xs'
-                        : 'bg-white border border-[#F5DADB] text-[#374151] hover:bg-red-50'
+                        : 'bg-white border border-[#E8E5E1] text-[#5A5550] hover:bg-red-50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-sm">check_circle</span>
@@ -684,7 +714,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                       decision === 'rejected'
                         ? 'bg-stone-800 text-white shadow-xs'
-                        : 'bg-white border border-[#F5DADB] text-[#374151] hover:bg-red-50'
+                        : 'bg-white border border-[#E8E5E1] text-[#5A5550] hover:bg-red-50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-sm">cancel</span>

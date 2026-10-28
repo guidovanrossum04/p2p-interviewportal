@@ -82,25 +82,25 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-[#1F1617]">Submission Review & Assignments</h2>
+          <h2 className="text-2xl font-bold text-[#101010]">Submission Review & Assignments</h2>
           <p className="text-xs text-red-900/60 mt-1">
             Review every video from a candidate upload. Assignment becomes available after the entire upload is approved.
           </p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-[#F5DADB] bg-white p-4 sm:flex-row">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#E8E5E1] bg-white p-4 sm:flex-row">
         <label className="relative flex-1">
           <span className="sr-only">Search submissions</span>
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#9CA3AF]">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#8A8580]">search</span>
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search candidate, email, role, or submission ID"
-            className="w-full rounded-xl border border-[#F5DADB] py-2 pl-9 pr-3 text-xs focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            className="w-full rounded-xl border border-[#E8E5E1] py-2 pl-9 pr-3 text-xs focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
           />
         </label>
         <label>
@@ -108,7 +108,7 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
           <select
             value={reviewStatus}
             onChange={(event) => setReviewStatus(event.target.value)}
-            className="w-full rounded-xl border border-[#F5DADB] bg-white px-3 py-2 text-xs sm:w-52"
+            className="w-full rounded-xl border border-[#E8E5E1] bg-white px-3 py-2 text-xs sm:w-52"
           >
             <option value="all">All submissions</option>
             <option value="awaiting_review">Awaiting review</option>
@@ -122,9 +122,9 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
 
       {loadError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{loadError}</div>}
       {isLoading ? (
-        <div className="bg-white rounded-2xl border border-[#F5DADB] p-10 text-center text-sm text-[#6B7280]">Loading submissions...</div>
+        <div className="bg-white rounded-2xl border border-[#E8E5E1] p-10 text-center text-sm text-[#8A8580]">Loading submissions...</div>
       ) : total === 0 ? (
-        <div className="bg-white rounded-2xl border border-[#F5DADB] p-10 text-center text-sm text-[#6B7280]">No candidate uploads to review.</div>
+        <div className="bg-white rounded-2xl border border-[#E8E5E1] p-10 text-center text-sm text-[#8A8580]">No candidate uploads to review.</div>
       ) : (
         groups.map(({ id: submissionId, videos: batchVideos }) => {
           const firstVideo = batchVideos[0];
@@ -153,14 +153,13 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
               key={submissionId}
               ref={submissionId === focusSubmissionId ? focusedSubmissionRef : undefined}
               className={`scroll-mt-24 rounded-2xl border bg-white overflow-hidden shadow-xs ${
-                submissionId === focusSubmissionId ? 'border-red-500 ring-2 ring-red-200' : 'border-[#F5DADB]'
+                submissionId === focusSubmissionId ? 'border-red-500 ring-2 ring-red-200' : 'border-[#E8E5E1]'
               }`}
             >
-              <div className="flex flex-col sm:flex-row justify-between gap-3 p-5 border-b border-[#F5DADB] bg-red-50/30">
+              <div className="flex flex-col sm:flex-row justify-between gap-3 p-5 border-b border-[#E8E5E1] bg-red-50/30">
                 <div>
-                  <h3 className="font-bold text-sm text-[#1F1617]">{firstVideo.candidateName}</h3>
-                  <p className="text-[10px] text-[#6B7280]">Submission ID: {submissionId}</p>
-                  <p className="text-[11px] text-[#6B7280]">{firstVideo.candidateEmail} · {firstVideo.roleApplied} · {batchVideos.length} uploaded video{batchVideos.length === 1 ? '' : 's'}</p>
+                  <h3 className="font-bold text-sm text-[#101010]">{firstVideo.candidateName}</h3>
+                  <p className="text-[11px] text-[#8A8580]">{firstVideo.candidateEmail} · {firstVideo.roleApplied} · {batchVideos.length} uploaded video{batchVideos.length === 1 ? '' : 's'}</p>
                   <p className={`mt-1 text-[11px] font-bold ${allApproved ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {allApproved ? 'All videos approved' : `${batchVideos.filter((video) => video.adminConfirmed).length} of ${batchVideos.length} approved`}
                   </p>
@@ -197,7 +196,7 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                       <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800">
                         Submission score <span className="text-base">{employerEvaluation.overallScore}</span><span className="text-[10px] font-medium"> / 100</span>
                       </span>
-                      <span className="text-[11px] text-[#6B7280]">
+                      <span className="text-[11px] text-[#8A8580]">
                         Reviewed by {employerEvaluation.evaluatorName}
                         {employerEvaluation.evaluatedAt ? ` · ${new Date(employerEvaluation.evaluatedAt).toLocaleDateString()}` : ''}
                       </span>
@@ -216,7 +215,7 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
               </div>
 
               {isExpanded && (
-                <div className="border-t border-[#F5DADB] bg-[#FCFAFA] p-5">
+                <div className="border-t border-[#E8E5E1] bg-[#F5F2EE] p-5">
                   {employerReviewed && employerEvaluation ? (
                     <div className="space-y-5">
                       <div className={`rounded-2xl border p-4 ${
@@ -224,21 +223,21 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                       }`}>
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">Whole-submission decision</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8A8580]">Whole-submission decision</p>
                             <h4 className={`mt-1 text-lg font-extrabold ${submissionRejected ? 'text-rose-800' : 'text-emerald-800'}`}>
                               {employerDecision}
                             </h4>
                           </div>
                           <div className="rounded-xl bg-white/80 px-4 py-2 text-right">
-                            <span className="block text-[10px] font-bold uppercase tracking-wide text-[#6B7280]">Overall score</span>
-                            <span className="text-2xl font-black text-[#1F1617]">{employerEvaluation.overallScore}</span>
-                            <span className="text-xs font-semibold text-[#6B7280]"> / 100</span>
+                            <span className="block text-[10px] font-bold uppercase tracking-wide text-[#8A8580]">Overall score</span>
+                            <span className="text-2xl font-extrabold text-[#101010]">{employerEvaluation.overallScore}</span>
+                            <span className="text-xs font-semibold text-[#8A8580]"> / 100</span>
                           </div>
                         </div>
                         {employerEvaluation.notes && (
                           <div className="mt-4 rounded-xl border border-white/80 bg-white/80 p-3">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-[#6B7280]">Manager / Employer feedback</p>
-                            <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-[#374151]">{employerEvaluation.notes}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-[#8A8580]">Manager / Employer feedback</p>
+                            <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-[#5A5550]">{employerEvaluation.notes}</p>
                           </div>
                         )}
                       </div>
@@ -246,25 +245,25 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                       <div>
                         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
                           <div>
-                            <h4 className="text-sm font-bold text-[#1F1617]">Scoring breakdown</h4>
-                            <p className="mt-0.5 text-[11px] text-[#6B7280]">Scores and rubric weights are for this submission as a whole.</p>
+                            <h4 className="text-sm font-bold text-[#101010]">Scoring breakdown</h4>
+                            <p className="mt-0.5 text-[11px] text-[#8A8580]">Scores and rubric weights are for this submission as a whole.</p>
                           </div>
-                          <span className="text-[10px] text-[#6B7280]">Weighted points contribute to the overall score</span>
+                          <span className="text-[10px] text-[#8A8580]">Weighted points contribute to the overall score</span>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                           {evaluationRubric.map((criterion) => {
                             const score = employerEvaluation.scores[criterion.id] || 0;
                             const weightedPoints = criterion.weight > 0 ? (score / 5) * criterion.weight : null;
                             return (
-                              <div key={criterion.id} className="rounded-xl border border-[#F5DADB] bg-white p-3.5">
+                              <div key={criterion.id} className="rounded-xl border border-[#E8E5E1] bg-white p-3.5">
                                 <div className="flex items-start justify-between gap-3">
-                                  <span className="text-xs font-bold text-[#1F1617]">{criterion.name}</span>
+                                  <span className="text-xs font-bold text-[#101010]">{criterion.name}</span>
                                   <span className="shrink-0 rounded-lg bg-red-50 px-2 py-1 text-xs font-extrabold text-red-700">{score} / 5</span>
                                 </div>
                                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
                                   <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-rose-700" style={{ width: `${Math.max(0, Math.min(100, score * 20))}%` }} />
                                 </div>
-                                <div className="mt-2 flex justify-between text-[10px] text-[#6B7280]">
+                                <div className="mt-2 flex justify-between text-[10px] text-[#8A8580]">
                                   <span>{criterion.weight ? `${criterion.weight}% weight` : 'Rubric score'}</span>
                                   {weightedPoints !== null && <span>{weightedPoints.toFixed(1)} weighted points</span>}
                                 </div>
@@ -301,21 +300,21 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                     </div>
                   )}
 
-                  <div className="mt-5 overflow-hidden rounded-xl border border-[#F5DADB] bg-white">
-                    <div className="border-b border-[#F5DADB] bg-red-50/50 px-4 py-3">
-                      <h4 className="text-xs font-bold text-[#1F1617]">Submitted videos in this submission</h4>
-                      <p className="mt-0.5 text-[10px] text-[#6B7280]">Videos are listed for reference; the employer decision applies to the entire submission.</p>
+                  <div className="mt-5 overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
+                    <div className="border-b border-[#E8E5E1] bg-red-50/50 px-4 py-3">
+                      <h4 className="text-xs font-bold text-[#101010]">Submitted videos in this submission</h4>
+                      <p className="mt-0.5 text-[10px] text-[#8A8580]">Videos are listed for reference; the employer decision applies to the entire submission.</p>
                     </div>
                     <div className="divide-y divide-red-50">
                 {batchVideos.map((video, index) => (
                   <div key={video.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#1F1617]">
-                        Video {index + 1} <span className="font-normal text-[#6B7280]">· {video.submissionType?.replace('_', ' ') || 'Video submission'}</span>
+                      <p className="text-xs font-bold text-[#101010]">
+                        Video {index + 1} <span className="font-normal text-[#8A8580]">· {video.submissionType?.replace('_', ' ') || 'Video submission'}</span>
                       </p>
-                      <p className="text-[11px] text-[#6B7280] mt-1">Submitted {video.submittedTimeAgo}</p>
+                      <p className="text-[11px] text-[#8A8580] mt-1">Submitted {video.submittedTimeAgo}</p>
                       {video.adminFeedback && (
-                        <p className="mt-2 text-[11px] text-[#6B7280] line-clamp-2">Admin comment: {video.adminFeedback}</p>
+                        <p className="mt-2 text-[11px] text-[#8A8580] line-clamp-2">Admin comment: {video.adminFeedback}</p>
                       )}
                     </div>
                     <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold ${
@@ -354,18 +353,18 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
         })
       )}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-[#F5DADB] bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#E8E5E1] bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-xs text-[#8A8580]">
           <span>Submissions per page</span>
-          <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="rounded-lg border border-[#F5DADB] bg-white px-2 py-1.5 text-xs" aria-label="Submissions per page">
+          <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="rounded-lg border border-[#E8E5E1] bg-white px-2 py-1.5 text-xs" aria-label="Submissions per page">
             <option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
           </select>
           <span>· Showing {total ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)} of {total}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1 || isLoading} className="rounded-lg border border-[#F5DADB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] disabled:opacity-40">Previous</button>
-          <span className="min-w-16 text-center text-xs text-[#6B7280]">Page {page} of {pageCount}</span>
-          <button type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page >= pageCount || isLoading} className="rounded-lg border border-[#F5DADB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] disabled:opacity-40">Next</button>
+          <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1 || isLoading} className="rounded-lg border border-[#E8E5E1] px-3 py-1.5 text-xs font-semibold text-[#8A8580] disabled:opacity-40">Previous</button>
+          <span className="min-w-16 text-center text-xs text-[#8A8580]">Page {page} of {pageCount}</span>
+          <button type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page >= pageCount || isLoading} className="rounded-lg border border-[#E8E5E1] px-3 py-1.5 text-xs font-semibold text-[#8A8580] disabled:opacity-40">Next</button>
         </div>
       </div>
     </div>

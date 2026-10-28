@@ -58,6 +58,7 @@ export interface CandidateVideo {
   department: string;
   submittedAt: string;
   submittedTimeAgo: string;
+  questionPrompt?: string;
   status: 'pending' | 'in_review' | 'completed';
   videoUrl: string;
   thumbnailUrl?: string;

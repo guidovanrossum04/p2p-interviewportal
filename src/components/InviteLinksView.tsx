@@ -82,7 +82,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
   return (
     <div id="invite-links-view" className="space-y-6">
       {/* Top Banner & Action */}
-      <div className="bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800 border border-red-200">
@@ -90,7 +90,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             </span>
             <span className="text-xs text-red-900/60 font-medium">Link-Based Invitation Pipeline</span>
           </div>
-          <h2 className="text-2xl font-black text-[#1F1617] tracking-tight">Shareable Access Links</h2>
+          <h2 className="text-2xl font-extrabold text-[#101010] tracking-tight">Shareable Access Links</h2>
           <p className="text-xs text-red-900/70 mt-1 max-w-2xl">
             Only administrators generate secure invitation links for candidates to upload their self-introduction videos
             and Managers / Employers to review assigned assessments. Uninvited public access is disabled.
@@ -109,7 +109,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-[#F5DADB] shadow-xs flex items-center gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-[#E8E5E1] shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shadow-xs">
             <span className="material-symbols-outlined text-2xl">link</span>
           </div>
@@ -117,12 +117,12 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block">
               Active Links on This Page
             </span>
-            <span className="text-2xl font-black text-[#1F1617]">{activeCount}</span>
-            <span className="text-[11px] text-[#6B7280] block">On this page</span>
+            <span className="text-2xl font-extrabold text-[#101010]">{activeCount}</span>
+            <span className="text-[11px] text-[#8A8580] block">On this page</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#F5DADB] shadow-xs flex items-center gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-[#E8E5E1] shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shadow-xs">
             <span className="material-symbols-outlined text-2xl">video_camera_front</span>
           </div>
@@ -130,12 +130,12 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block">
               Candidate Upload Invites
             </span>
-            <span className="text-2xl font-black text-[#1F1617]">{candidateLinksCount}</span>
-            <span className="text-[11px] text-[#6B7280] block">On this page</span>
+            <span className="text-2xl font-extrabold text-[#101010]">{candidateLinksCount}</span>
+            <span className="text-[11px] text-[#8A8580] block">On this page</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#F5DADB] shadow-xs flex items-center gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-[#E8E5E1] shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shadow-xs">
             <span className="material-symbols-outlined text-2xl">rate_review</span>
           </div>
@@ -143,14 +143,14 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block">
               Manager / Employer Review Invites
             </span>
-            <span className="text-2xl font-black text-[#1F1617]">{evaluatorLinksCount}</span>
-            <span className="text-[11px] text-[#6B7280] block">On this page</span>
+            <span className="text-2xl font-extrabold text-[#101010]">{evaluatorLinksCount}</span>
+            <span className="text-[11px] text-[#8A8580] block">On this page</span>
           </div>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-[#F5DADB] shadow-xs flex flex-col sm:flex-row justify-between items-center gap-3 text-xs">
+      <div className="bg-white p-4 rounded-2xl border border-[#E8E5E1] shadow-xs flex flex-col sm:flex-row justify-between items-center gap-3 text-xs">
         <div className="flex gap-1.5 p-1 bg-red-50/40 rounded-xl border border-red-100 w-full sm:w-auto">
           <button
             type="button"
@@ -161,7 +161,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
               filterType === 'all'
                 ? 'bg-red-600 text-white font-bold shadow-xs'
-                : 'text-[#6B7280] hover:text-[#1F1617]'
+                : 'text-[#8A8580] hover:text-[#101010]'
             }`}
           >
             All Links ({total})
@@ -175,7 +175,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
               filterType === 'candidate'
                 ? 'bg-red-600 text-white font-bold shadow-xs'
-                : 'text-[#6B7280] hover:text-[#1F1617]'
+                : 'text-[#8A8580] hover:text-[#101010]'
             }`}
           >
             <span className="material-symbols-outlined text-xs">video_camera_front</span>
@@ -190,7 +190,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
               filterType === 'evaluator'
                 ? 'bg-red-600 text-white font-bold shadow-xs'
-                : 'text-[#6B7280] hover:text-[#1F1617]'
+                : 'text-[#8A8580] hover:text-[#101010]'
             }`}
           >
             <span className="material-symbols-outlined text-xs">rate_review</span>
@@ -207,7 +207,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                 setFilterStatus(status);
                 onQueryChange(1, filterType, status, search);
               }}
-              className={`px-3 py-1.5 rounded-lg font-semibold capitalize ${filterStatus === status ? 'bg-[#1F1617] text-white' : 'text-[#6B7280] hover:text-[#1F1617]'}`}
+              className={`px-3 py-1.5 rounded-lg font-semibold capitalize ${filterStatus === status ? 'bg-[#101010] text-white' : 'text-[#8A8580] hover:text-[#101010]'}`}
             >
               {status === 'all' ? 'All Status' : status}
             </button>
@@ -215,7 +215,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
         </div>
 
         <div className="relative w-full sm:w-64">
-          <span className="material-symbols-outlined absolute left-3 top-2.5 text-[#6B7280] text-sm">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-2.5 text-[#8A8580] text-sm">search</span>
           <input
             type="text"
             value={search}
@@ -224,7 +224,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
               onQueryChange(1, filterType, filterStatus, e.target.value);
             }}
             placeholder="Search invitees, positions..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#F5DADB] text-xs focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E8E5E1] text-xs focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
           />
         </div>
       </div>
@@ -232,11 +232,11 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
       {/* Links List */}
       <div className="space-y-3">
         {isLoading ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#F5DADB] text-center text-sm text-[#6B7280]">Loading access links...</div>
+          <div className="bg-white p-12 rounded-2xl border border-[#E8E5E1] text-center text-sm text-[#8A8580]">Loading access links...</div>
         ) : filteredLinks.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#F5DADB] text-center space-y-3">
+          <div className="bg-white p-12 rounded-2xl border border-[#E8E5E1] text-center space-y-3">
             <span className="material-symbols-outlined text-4xl text-red-300">link_off</span>
-            <p className="font-bold text-sm text-[#1F1617]">No shareable links found</p>
+            <p className="font-bold text-sm text-[#101010]">No shareable links found</p>
             <p className="text-xs text-red-900/60 max-w-sm mx-auto">
               Create an invitation link for a candidate upload or a Manager / Employer review.
             </p>
@@ -268,7 +268,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                     ? 'border-gray-200 opacity-60 bg-gray-50'
                     : isExpired
                     ? 'border-amber-200 bg-amber-50/20'
-                    : 'border-[#F5DADB] hover:border-red-300'
+                    : 'border-[#E8E5E1] hover:border-red-300'
                 }`}
               >
                 {/* Left Info */}
@@ -311,18 +311,16 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                     <div>
                       <span className="text-red-900/60 font-medium">Recipient: </span>
-                      <strong className="text-[#1F1617]">{link.recipientName}</strong>
-                      {link.recipientEmail && <span className="text-[#6B7280]"> ({link.recipientEmail})</span>}
+                      <strong className="text-[#101010]">{link.recipientName}</strong>
+                      {link.recipientEmail && <span className="text-[#8A8580]"> ({link.recipientEmail})</span>}
                     </div>
 
                     {link.roleApplied && (
                       <div>
                         <span className="text-red-900/60 font-medium">Position: </span>
-                        <span className="text-[#1F1617] font-semibold">{link.roleApplied}</span>
+                        <span className="text-[#101010] font-semibold">{link.roleApplied}</span>
                       </div>
                     )}
-                    <div className="text-[10px] font-mono text-[#6B7280]">Submission ID: {link.submissionId || link.id}</div>
-
                     {link.assignedCandidateName && (
                       <div>
                         <span className="text-red-900/60 font-medium">Assigned Candidate: </span>
@@ -399,9 +397,9 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                         min={toDateTimeLocalValue(new Date(Date.now() + 60 * 1000))}
                         onChange={(event) => setExpiryDraft(event.target.value)}
                         aria-label="New link expiry date and time"
-                        className="rounded-lg border border-[#F5DADB] px-2 py-1.5 text-xs"
+                        className="rounded-lg border border-[#E8E5E1] px-2 py-1.5 text-xs"
                       />
-                      <span className="text-[10px] text-[#6B7280]">Recipient will be emailed automatically.</span>
+                      <span className="text-[10px] text-[#8A8580]">Recipient will be emailed automatically.</span>
                       <button
                         type="button"
                         onClick={async () => {
@@ -422,7 +420,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                       <button
                         type="button"
                         onClick={() => { setEditingExpiryId(null); setExpiryError(null); }}
-                        className="px-2 py-1.5 text-xs font-semibold text-[#6B7280] hover:text-[#1F1617]"
+                        className="px-2 py-1.5 text-xs font-semibold text-[#8A8580] hover:text-[#101010]"
                       >
                         Cancel
                       </button>
@@ -452,7 +450,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                         await onRevokeLink(link.id);
                         await onQueryChange(page, filterType, filterStatus, search);
                       }}
-                      className="p-1.5 text-[#6B7280] hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                      className="p-1.5 text-[#8A8580] hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
                       title="Revoke link access"
                     >
                       <span className="material-symbols-outlined text-base">block</span>
@@ -465,13 +463,13 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
         )}
       </div>
       {total > pageSize && (
-        <div className="flex items-center justify-between bg-white rounded-2xl border border-[#F5DADB] p-4">
-          <span className="text-xs text-[#6B7280]">
+        <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E8E5E1] p-4">
+          <span className="text-xs text-[#8A8580]">
             Showing {(page - 1) * pageSize + (total ? 1 : 0)}–{Math.min(page * pageSize, total)} of {total}
           </span>
           <div className="flex gap-2">
             <button type="button" disabled={page <= 1 || isLoading} onClick={() => onQueryChange(page - 1, filterType, filterStatus, search)} className="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Previous</button>
-            <span className="self-center text-xs text-[#6B7280]">Page {page} of {Math.max(1, Math.ceil(total / pageSize))}</span>
+            <span className="self-center text-xs text-[#8A8580]">Page {page} of {Math.max(1, Math.ceil(total / pageSize))}</span>
             <button type="button" disabled={page >= Math.ceil(total / pageSize) || isLoading} onClick={() => onQueryChange(page + 1, filterType, filterStatus, search)} className="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Next</button>
           </div>
         </div>
@@ -481,8 +479,8 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-auto p-5 space-y-3" onClick={(event) => event.stopPropagation()}>
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-base font-bold text-[#1F1617]">Submission videos</h3>
-                <p className="text-xs text-[#6B7280]">Select a video to review it in the video review popup.</p>
+                <h3 className="text-base font-bold text-[#101010]">Submission videos</h3>
+                <p className="text-xs text-[#8A8580]">Select a video to review it in the video review popup.</p>
               </div>
               <button type="button" onClick={() => setReviewingInviteId(null)} aria-label="Close submissions"><span className="material-symbols-outlined">close</span></button>
             </div>
@@ -490,7 +488,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
               <div key={video.id} className="flex justify-between items-center gap-3 border rounded-xl p-3">
                 <div>
                   <p className="text-xs font-bold">{index + 1}. {video.roleApplied} submission</p>
-                  <p className="text-[11px] text-[#6B7280]">
+                  <p className="text-[11px] text-[#8A8580]">
                     {video.submittedTimeAgo} · {video.adminReviewStatus === 'accepted'
                       ? 'Approved'
                       : video.adminReviewStatus === 'reupload_requested'

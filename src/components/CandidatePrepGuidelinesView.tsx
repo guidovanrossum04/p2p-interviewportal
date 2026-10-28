@@ -19,15 +19,15 @@ const reminders = [
 
 export const CandidatePrepGuidelinesView: React.FC = () => (
   <main className="mx-auto max-w-4xl space-y-6">
-    <header className="rounded-2xl border border-[#F5DADB] bg-white p-6 shadow-xs">
-      <h2 className="text-2xl font-bold text-[#1F1617]">Prep &amp; Guidelines</h2>
+    <header className="rounded-2xl border border-[#E8E5E1] bg-white p-6 shadow-xs">
+      <h2 className="text-2xl font-bold text-[#101010]">Prep &amp; Guidelines</h2>
       <p className="mt-1 text-xs text-red-900/60">Review these questions and reminders before your video interview.</p>
     </header>
 
-    <section className="space-y-4 rounded-2xl border border-[#F5DADB] bg-white p-6 shadow-xs">
-      <h3 className="text-base font-bold text-[#1F1617]">Things to remember</h3>
-      <p className="text-sm text-[#4B5563]">The following are the questions that will be asked of you.</p>
-      <ol className="list-decimal space-y-3 pl-5 text-sm leading-relaxed text-[#1F1617]">
+    <section className="space-y-4 rounded-2xl border border-[#E8E5E1] bg-white p-6 shadow-xs">
+      <h3 className="text-base font-bold text-[#101010]">Things to remember</h3>
+      <p className="text-sm text-[#5A5550]">The following are the questions that will be asked of you.</p>
+      <ol className="list-decimal space-y-3 pl-5 text-sm leading-relaxed text-[#101010]">
         {interviewQuestions.map((question) => <li key={question}>{question}</li>)}
       </ol>
     </section>

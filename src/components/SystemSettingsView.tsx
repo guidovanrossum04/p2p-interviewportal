@@ -64,6 +64,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
     setIsSaving(true);
     try {
       await onSaveSettings({ ...formData, rubricWeights: evenlyWeightedRubric(formData.rubricWeights) }, smtpPassword);
+      setSmtpPassword('');
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2500);
     } catch (error) {
@@ -88,8 +89,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
   return (
     <div id="system-settings-container" className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs">
-        <h2 className="text-2xl font-bold text-[#1F1617]">System & Evaluation Parameters</h2>
+      <div className="bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs">
+        <h2 className="text-2xl font-bold text-[#101010]">System & Evaluation Parameters</h2>
         <p className="text-xs text-red-900/60 mt-1">
           Configure evaluation rubrics, AI scoring assistance, and email delivery settings.
         </p>
@@ -97,8 +98,8 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Dynamic Rubric */}
-        <div className="bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs space-y-4">
-          <h3 className="text-sm font-bold text-[#1F1617] flex items-center gap-2">
+        <div className="bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-[#101010] flex items-center gap-2">
             <span className="material-symbols-outlined text-red-600">balance</span>
             Evaluation Rubric
           </h3>
@@ -112,7 +113,7 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
                   onChange={(e) => updateRubric(index, { name: e.target.value })}
                   placeholder="Criterion name"
                   maxLength={100}
-                  className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
+                  className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs focus:ring-1 focus:ring-red-500 focus:outline-none"
                 />
                 <button
                   type="button"
@@ -139,29 +140,29 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
         </div>
 
         {/* SMTP Configuration */}
-        <div className="bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs space-y-4">
-          <h3 className="text-sm font-bold text-[#1F1617] flex items-center gap-2">
+        <div className="bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-[#101010] flex items-center gap-2">
             <span className="material-symbols-outlined text-red-600">mail</span>
             SMTP Email Settings
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="text-xs font-semibold">SMTP Host
-              <input value={formData.smtpHost} onChange={(e) => setFormData({ ...formData, smtpHost: e.target.value })} placeholder="smtp.example.com" className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 font-normal" />
+              <input value={formData.smtpHost} onChange={(e) => setFormData({ ...formData, smtpHost: e.target.value })} placeholder="smtp.example.com" className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 font-normal" />
             </label>
             <label className="text-xs font-semibold">Port
-              <input type="number" min={1} max={65535} value={formData.smtpPort} onChange={(e) => setFormData({ ...formData, smtpPort: Number(e.target.value) })} className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 font-normal" />
+              <input type="number" min={1} max={65535} value={formData.smtpPort} onChange={(e) => setFormData({ ...formData, smtpPort: Number(e.target.value) })} className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 font-normal" />
             </label>
             <label className="text-xs font-semibold">SMTP Username
-              <input autoComplete="username" value={formData.smtpUsername} onChange={(e) => setFormData({ ...formData, smtpUsername: e.target.value })} className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 font-normal" />
+              <input autoComplete="username" value={formData.smtpUsername} onChange={(e) => setFormData({ ...formData, smtpUsername: e.target.value })} className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 font-normal" />
             </label>
             <label className="text-xs font-semibold">SMTP Password
-              <input type="password" autoComplete="new-password" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} placeholder={settings.smtpPasswordConfigured ? 'Saved password (leave blank to keep)' : 'Enter SMTP password'} className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 font-normal" />
+              <input type="password" autoComplete="new-password" value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} placeholder={settings.smtpPasswordConfigured ? 'Saved password (leave blank to keep)' : 'Enter SMTP password'} className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 font-normal" />
             </label>
             <label className="text-xs font-semibold">From Address
-              <input type="email" value={formData.smtpFromAddress} onChange={(e) => setFormData({ ...formData, smtpFromAddress: e.target.value })} placeholder="recruitment@example.com" className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 font-normal" />
+              <input type="email" value={formData.smtpFromAddress} onChange={(e) => setFormData({ ...formData, smtpFromAddress: e.target.value })} placeholder="recruitment@example.com" className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 font-normal" />
             </label>
             <label className="text-xs font-semibold">From Name
-              <input value={formData.smtpFromName} onChange={(e) => setFormData({ ...formData, smtpFromName: e.target.value })} className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 font-normal" />
+              <input value={formData.smtpFromName} onChange={(e) => setFormData({ ...formData, smtpFromName: e.target.value })} className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 font-normal" />
             </label>
             <label className="text-xs font-semibold flex items-center gap-2 sm:col-span-2">
               <input type="checkbox" checked={formData.smtpSecure} onChange={(e) => setFormData({ ...formData, smtpSecure: e.target.checked })} className="accent-red-600" />
@@ -170,14 +171,16 @@ export const SystemSettingsView: React.FC<SystemSettingsViewProps> = ({
           </div>
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
             <label className="text-xs font-semibold flex-1">Test recipient
-              <input type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} placeholder="you@example.com" className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 font-normal" />
+              <input type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} placeholder="you@example.com" className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 font-normal" />
             </label>
             <button type="button" onClick={handleTestEmail} disabled={isTestingEmail} className="px-4 py-2.5 rounded-xl text-xs font-bold border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50">
               {isTestingEmail ? 'Sending...' : 'Send Test Email'}
             </button>
           </div>
           <p className="text-[11px] text-red-900/60">
-            {settings.smtpPasswordConfigured ? 'A password is configured. Leave the password field empty to keep it unchanged.' : 'Database-backed settings encrypt the SMTP password at rest. In-memory mode can only use it for the current test.'}
+            {settings.smtpPasswordConfigured
+              ? 'SMTP settings and the encrypted password are saved. Leave the password field empty to keep the saved password; enter a new one only to change it.'
+              : 'Save your SMTP settings and password to store them encrypted in the database.'}
           </p>
         </div>
 

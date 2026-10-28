@@ -53,8 +53,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
   return (
     <div id="admin-dashboard-view" className="space-y-6">
       {(isLoading || loadError) && (
-        <div className="flex flex-col gap-3 rounded-xl border border-[#F5DADB] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p role={loadError ? 'alert' : 'status'} className={`text-xs ${loadError ? 'text-red-700' : 'text-[#6B7280]'}`}>
+        <div className="flex flex-col gap-3 rounded-xl border border-[#E8E5E1] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p role={loadError ? 'alert' : 'status'} className={`text-xs ${loadError ? 'text-red-700' : 'text-[#8A8580]'}`}>
             {loadError || 'Refreshing dashboard data...'}
           </p>
           {onRefresh && (
@@ -62,7 +62,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
               type="button"
               onClick={onRefresh}
               disabled={isLoading}
-              className="rounded-lg border border-[#F5DADB] px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
+              className="rounded-lg border border-[#E8E5E1] px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
             >
               {isLoading ? 'Refreshing...' : 'Refresh dashboard'}
             </button>
@@ -77,7 +77,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
               <span className="material-symbols-outlined text-xs">vpn_key</span>
               <span>Admin Anbin • Access Governance</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight">Generate & Share Access Links</h2>
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">Generate & Share Access Links</h2>
             <p className="text-xs text-red-100 leading-relaxed">
               Generate direct invitation links to share with <strong>Users (Candidates) to upload videos</strong> and{' '}
               <strong>Managers / Employers to grade submissions</strong>. 
@@ -156,12 +156,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         {/* Total Users Card */}
         <div
           id="stat-card-total-users"
-          className="bg-white border border-[#F5DADB] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
+          className="bg-white border border-[#E8E5E1] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
         >
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-xs font-bold text-red-900/60 uppercase tracking-wider">Total Users</p>
-              <h3 className="text-3xl font-extrabold text-[#1F1617] mt-2 tracking-tight">
+              <h3 className="text-3xl font-extrabold text-[#101010] mt-2 tracking-tight">
                 {stats.totalUsers.toLocaleString()}
               </h3>
             </div>
@@ -178,12 +178,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         {/* Videos Uploaded Card */}
         <div
           id="stat-card-videos-uploaded"
-          className="bg-white border border-[#F5DADB] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
+          className="bg-white border border-[#E8E5E1] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
         >
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-xs font-bold text-red-900/60 uppercase tracking-wider">Videos Uploaded</p>
-              <h3 className="text-3xl font-extrabold text-[#1F1617] mt-2 tracking-tight">
+              <h3 className="text-3xl font-extrabold text-[#101010] mt-2 tracking-tight">
                 {stats.videosUploaded.toLocaleString()}
               </h3>
             </div>
@@ -200,7 +200,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         {/* Pending Assignments Card */}
         <div
           id="stat-card-pending-assignments"
-          className="bg-white border border-[#F5DADB] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
+          className="bg-white border border-[#E8E5E1] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
         >
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -222,12 +222,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         {/* Completed Evaluations Card */}
         <div
           id="stat-card-completed-evals"
-          className="bg-white border border-[#F5DADB] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
+          className="bg-white border border-[#E8E5E1] rounded-2xl p-6 flex flex-col justify-between shadow-xs hover:border-red-300 transition-colors"
         >
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-xs font-bold text-red-900/60 uppercase tracking-wider">Completed Evals</p>
-              <h3 className="text-3xl font-extrabold text-[#1F1617] mt-2 tracking-tight">
+              <h3 className="text-3xl font-extrabold text-[#101010] mt-2 tracking-tight">
                 {stats.completedEvals.toLocaleString()}
               </h3>
             </div>
@@ -246,9 +246,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent Evaluations and Uploads */}
         <div className="lg:col-span-12 flex flex-col gap-6">
-          <section className="bg-white border border-[#F5DADB] rounded-2xl p-6 shadow-xs">
+          <section className="bg-white border border-[#E8E5E1] rounded-2xl p-6 shadow-xs">
             <div className="mb-5">
-              <h3 className="text-base font-bold text-[#1F1617]">Submission Status</h3>
+              <h3 className="text-base font-bold text-[#101010]">Submission Status</h3>
               <p className="text-xs text-red-900/60 mt-0.5">Pending versus completed candidate videos</p>
             </div>
 
@@ -259,8 +259,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
               ].map((item) => (
                 <div key={item.label}>
                   <div className="flex justify-between items-center text-xs mb-1.5">
-                    <span className="font-semibold text-[#1F1617]">{item.label}</span>
-                    <span className="font-mono font-bold text-[#1F1617]">{item.count}</span>
+                    <span className="font-semibold text-[#101010]">{item.label}</span>
+                    <span className="font-mono font-bold text-[#101010]">{item.count}</span>
                   </div>
                   <div className="w-full h-3 rounded-full bg-[#F3F4F6] overflow-hidden">
                     <div
@@ -274,10 +274,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
           </section>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <section className="bg-white border border-[#F5DADB] rounded-2xl shadow-xs overflow-hidden">
-              <div className="p-5 border-b border-[#F5DADB] flex justify-between items-center gap-3">
+            <section className="bg-white border border-[#E8E5E1] rounded-2xl shadow-xs overflow-hidden">
+              <div className="p-5 border-b border-[#E8E5E1] flex justify-between items-center gap-3">
                 <div>
-                  <h3 className="text-base font-bold text-[#1F1617]">Recent Uploads</h3>
+                  <h3 className="text-base font-bold text-[#101010]">Recent Uploads</h3>
                   <p className="text-xs text-red-900/60 mt-0.5">Latest candidate video submissions</p>
                 </div>
                 <button
@@ -289,7 +289,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                 </button>
               </div>
               {recentUploads.length === 0 ? (
-                <p className="px-5 py-8 text-center text-xs text-[#6B7280]">No video uploads yet.</p>
+                <p className="px-5 py-8 text-center text-xs text-[#8A8580]">No video uploads yet.</p>
               ) : (
                 <div className="divide-y divide-red-50">
                   {recentUploads.map(({ id: submissionId, videos: submissionVideos }) => {
@@ -304,14 +304,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                     >
                       <span className="flex justify-between items-start gap-3">
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-bold text-[#1F1617]">{video.candidateName}</span>
-                          <span className="block truncate text-[11px] text-[#6B7280] mt-0.5">{video.roleApplied} · {submissionVideos.length} videos · {completedCount} reviewed</span>
+                          <span className="block truncate text-xs font-bold text-[#101010]">{video.candidateName}</span>
+                          <span className="block truncate text-[11px] text-[#8A8580] mt-0.5">{video.roleApplied} · {submissionVideos.length} videos · {completedCount} reviewed</span>
                         </span>
                         <span className={`text-[10px] font-bold whitespace-nowrap ${video.status === 'completed' ? 'text-emerald-700' : 'text-amber-700'}`}>
                           {video.status === 'completed' ? 'Completed' : video.status === 'in_review' ? 'In review' : 'Pending'}
                         </span>
                       </span>
-                      <span className="block text-[10px] text-[#6B7280] mt-1.5">{formatDate(video.submittedAt)}</span>
+                      <span className="block text-[10px] text-[#8A8580] mt-1.5">{formatDate(video.submittedAt)}</span>
                     </button>
                     );
                   })}
@@ -319,13 +319,13 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
               )}
             </section>
 
-            <section className="bg-white border border-[#F5DADB] rounded-2xl shadow-xs overflow-hidden">
-              <div className="p-5 border-b border-[#F5DADB]">
-                <h3 className="text-base font-bold text-[#1F1617]">Recent Evaluation Results</h3>
+            <section className="bg-white border border-[#E8E5E1] rounded-2xl shadow-xs overflow-hidden">
+              <div className="p-5 border-b border-[#E8E5E1]">
+                <h3 className="text-base font-bold text-[#101010]">Recent Evaluation Results</h3>
                 <p className="text-xs text-red-900/60 mt-0.5">Latest submitted evaluator decisions</p>
               </div>
               {recentEvaluationResults.length === 0 ? (
-                <p className="px-5 py-8 text-center text-xs text-[#6B7280]">No evaluation results yet.</p>
+                <p className="px-5 py-8 text-center text-xs text-[#8A8580]">No evaluation results yet.</p>
               ) : (
                 <div className="divide-y divide-red-50">
                   {recentEvaluationResults.map(({ submission, video }) => {
@@ -339,12 +339,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                     >
                       <span className="flex justify-between items-start gap-3">
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-bold text-[#1F1617]">{video.candidateName}</span>
-                          <span className="block truncate text-[11px] text-[#6B7280] mt-0.5">{video.roleApplied} · {submission.videos.length} videos · {evaluation.evaluatorName}</span>
+                          <span className="block truncate text-xs font-bold text-[#101010]">{video.candidateName}</span>
+                          <span className="block truncate text-[11px] text-[#8A8580] mt-0.5">{video.roleApplied} · {submission.videos.length} videos · {evaluation.evaluatorName}</span>
                         </span>
                         <span className="text-xs font-bold text-emerald-700 whitespace-nowrap">{evaluation.overallScore}%</span>
                       </span>
-                      <span className="flex justify-between text-[10px] text-[#6B7280] mt-1.5">
+                      <span className="flex justify-between text-[10px] text-[#8A8580] mt-1.5">
                         <span className="capitalize">{evaluation.decision}</span>
                         <span>{formatDate(evaluation.evaluatedAt)}</span>
                       </span>

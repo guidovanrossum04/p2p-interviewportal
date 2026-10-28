@@ -33,9 +33,9 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
   return (
     <div id="users-management-view" className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-[#1F1617]">User & Manager / Employer Directory</h2>
+          <h2 className="text-2xl font-bold text-[#101010]">User & Manager / Employer Directory</h2>
           <p className="text-xs text-red-900/60 mt-1">
             Manage Managers / Employers, recruitment administrators, and candidate accounts.
           </p>
@@ -59,7 +59,7 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all capitalize cursor-pointer ${
               roleFilter === r
                 ? 'bg-red-600 text-white shadow-xs'
-                : 'bg-white border border-[#F5DADB] text-[#6B7280] hover:text-red-700 hover:bg-rose-50/40'
+                : 'bg-white border border-[#E8E5E1] text-[#8A8580] hover:text-red-700 hover:bg-rose-50/40'
             }`}
           >
             {r === 'all' ? 'All Roles' : r === 'evaluator' ? 'Managers / Employers' : `${r}s`}
@@ -68,11 +68,11 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-[#F5DADB] rounded-2xl overflow-hidden shadow-xs">
+      <div className="bg-white border border-[#E8E5E1] rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[#F5DADB] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
+              <tr className="border-b border-[#E8E5E1] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
                 <th className="px-6 py-3.5">User</th>
                 <th className="px-6 py-3.5">Role</th>
                 <th className="px-6 py-3.5">Department / Title</th>
@@ -82,9 +82,9 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                 <th className="px-6 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F5DADB] text-xs">
+            <tbody className="divide-y divide-[#E8E5E1] text-xs">
               {filteredUsers.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-[#6B7280]">No users match this filter.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-[#8A8580]">No users match this filter.</td></tr>
               ) : filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-rose-50/30 transition-colors">
                   <td className="px-6 py-4">
@@ -92,11 +92,11 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                       <img
                         src={user.avatar || GENERIC_AVATAR}
                         alt={user.name}
-                        className="w-9 h-9 rounded-full object-cover border border-[#F5DADB]"
+                        className="w-9 h-9 rounded-full object-cover border border-[#E8E5E1]"
                         referrerPolicy="no-referrer"
                       />
                       <div>
-                        <span className="font-bold text-[#1F1617] block hover:text-red-700 transition-colors">{user.name}</span>
+                        <span className="font-bold text-[#101010] block hover:text-red-700 transition-colors">{user.name}</span>
                         <span className="text-[11px] text-red-900/60">{user.email}</span>
                       </div>
                     </div>
@@ -117,8 +117,8 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                   </td>
 
                   <td className="px-6 py-4">
-                    <span className="font-medium text-[#1F1617] block text-xs">{user.title || user.department}</span>
-                    <span className="text-[11px] text-[#6B7280]">{user.department}</span>
+                    <span className="font-medium text-[#101010] block text-xs">{user.title || user.department}</span>
+                    <span className="text-[11px] text-[#8A8580]">{user.department}</span>
                   </td>
 
                   <td className="px-6 py-4 text-xs font-mono">
@@ -127,7 +127,7 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                         {user.assignedCount ?? 0} assigned / {user.completedCount ?? 0} done
                       </span>
                     ) : (
-                      <span className="text-[#9CA3AF]">—</span>
+                      <span className="text-[#8A8580]">—</span>
                     )}
                   </td>
 
@@ -138,7 +138,7 @@ export const UsersManagementView: React.FC<UsersManagementViewProps> = ({
                     </span>
                   </td>
 
-                  <td className="px-6 py-4 text-xs text-[#6B7280]">{user.lastActive || 'Recently'}</td>
+                  <td className="px-6 py-4 text-xs text-[#8A8580]">{user.lastActive || 'Recently'}</td>
                   <td className="px-6 py-4 text-right">
                     {user.role !== 'admin' && (
                       <button

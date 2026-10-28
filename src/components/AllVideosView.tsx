@@ -77,9 +77,9 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
   return (
     <div id="all-videos-container" className="space-y-6">
       {/* Header controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-[#1F1617]">Submissions</h2>
+          <h2 className="text-2xl font-bold text-[#101010]">Submissions</h2>
           <p className="text-xs text-red-900/60 mt-1">
             {total} candidate submissions
           </p>
@@ -92,11 +92,11 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
         )}
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex bg-red-50/60 p-1 rounded-xl border border-[#F5DADB]">
+          <div className="flex bg-red-50/60 p-1 rounded-xl border border-[#E8E5E1]">
             <button
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                viewMode === 'table' ? 'bg-white text-red-700 shadow-xs' : 'text-[#6B7280] hover:text-red-700'
+                viewMode === 'table' ? 'bg-white text-red-700 shadow-xs' : 'text-[#8A8580] hover:text-red-700'
               }`}
               title="Table View"
             >
@@ -105,7 +105,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                viewMode === 'grid' ? 'bg-white text-red-700 shadow-xs' : 'text-[#6B7280] hover:text-red-700'
+                viewMode === 'grid' ? 'bg-white text-red-700 shadow-xs' : 'text-[#8A8580] hover:text-red-700'
               }`}
               title="Grid Cards View"
             >
@@ -133,7 +133,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all capitalize cursor-pointer ${
                 selectedStatus === st
                   ? 'bg-red-600 text-white shadow-xs'
-                  : 'bg-white border border-[#F5DADB] text-[#6B7280] hover:text-red-700 hover:bg-rose-50/40'
+                  : 'bg-white border border-[#E8E5E1] text-[#8A8580] hover:text-red-700 hover:bg-rose-50/40'
               }`}
             >
               {st === 'all' ? 'All Submissions' : st === 'awaiting_admin' ? 'Awaiting Admin Review' : st === 'admin_confirmed' ? 'Confirmed' : st.replace('_', ' ')}
@@ -147,7 +147,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="text-xs bg-white border border-[#F5DADB] rounded-xl px-3 py-1.5 text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:outline-none cursor-pointer"
+              className="text-xs bg-white border border-[#E8E5E1] rounded-xl px-3 py-1.5 text-[#101010] focus:ring-1 focus:ring-red-500 focus:outline-none cursor-pointer"
             >
               <option value="all">All Departments</option>
               {departments.map((dept) => (
@@ -162,13 +162,13 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
 
       {/* View Content */}
       {isLoading ? (
-        <div className="rounded-2xl border border-[#F5DADB] bg-white p-10 text-center text-sm text-[#6B7280]">Loading submissions...</div>
+        <div className="rounded-2xl border border-[#E8E5E1] bg-white p-10 text-center text-sm text-[#8A8580]">Loading submissions...</div>
       ) : viewMode === 'table' ? (
-        <div className="bg-white border border-[#F5DADB] rounded-2xl overflow-hidden shadow-xs">
+        <div className="bg-white border border-[#E8E5E1] rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-[#F5DADB] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
+                <tr className="border-b border-[#E8E5E1] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
                   <th className="px-6 py-3.5">Candidate</th>
                   <th className="px-6 py-3.5">Role / Dept</th>
                   <th className="px-6 py-3.5">Duration</th>
@@ -177,10 +177,10 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                   <th className="px-6 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F5DADB] text-xs">
+              <tbody className="divide-y divide-[#E8E5E1] text-xs">
                 {submissions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-[#9CA3AF]">
+                    <td colSpan={6} className="px-6 py-8 text-center text-[#8A8580]">
                       No candidate videos match your selected criteria.
                     </td>
                   </tr>
@@ -203,25 +203,24 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                             {getInitials(video.candidateName)}
                           </div>
                           <div>
-                            <span className="font-bold text-[#1F1617] block group-hover:text-red-700 transition-colors">
+                            <span className="font-bold text-[#101010] block group-hover:text-red-700 transition-colors">
                               {video.candidateName}
                             </span>
                             <span className="text-[11px] text-red-900/60">{video.candidateEmail}</span>
-                            <span className="block text-[10px] font-mono text-[#6B7280] mt-1">Submission {submissionId}</span>
                           </div>
                         </div>
                       </td>
 
                       <td className="px-6 py-4">
-                        <span className="font-medium text-[#1F1617] block">{video.roleApplied}</span>
-                        <span className="text-[11px] text-[#6B7280]">{video.department}</span>
+                        <span className="font-medium text-[#101010] block">{video.roleApplied}</span>
+                        <span className="text-[11px] text-[#8A8580]">{video.department}</span>
                       </td>
 
                       <td className="px-6 py-4 text-xs font-mono text-red-900/70">
                         {submissionVideos.length} video{submissionVideos.length === 1 ? '' : 's'}
                       </td>
 
-                      <td className="px-6 py-4 text-xs text-[#1F1617]">
+                      <td className="px-6 py-4 text-xs text-[#101010]">
                         {video.assignedEvaluatorName ? (
                           <div className="flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-sm text-red-600">person</span>
@@ -240,7 +239,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                           <span className={`text-[9px] font-semibold ${submissionVideos.every((item) => item.adminConfirmed) ? 'text-emerald-700' : 'text-amber-700'}`}>
                             {submissionVideos.filter((item) => item.adminConfirmed).length}/{submissionVideos.length} admin approved
                           </span>
-                          <span className="text-[9px] text-[#6B7280]">
+                          <span className="text-[9px] text-[#8A8580]">
                             {submissionVideos.reduce((documentCount, item) => documentCount + (item.documents?.length || 0), 0)} documents
                           </span>
                         </div>
@@ -275,7 +274,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
             <div
               key={submissionId}
               onClick={() => onSelectCandidateVideo(video)}
-              className="bg-white border border-[#F5DADB] hover:border-red-400 rounded-2xl overflow-hidden shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
+              className="bg-white border border-[#E8E5E1] hover:border-red-400 rounded-2xl overflow-hidden shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
             >
               <div className="relative aspect-video bg-stone-900">
                 <img
@@ -310,14 +309,14 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
 
               <div className="p-5 flex-1 flex flex-col justify-between">
                 <div>
-                  <h4 className="font-bold text-sm text-[#1F1617] group-hover:text-red-700 transition-colors">
+                  <h4 className="font-bold text-sm text-[#101010] group-hover:text-red-700 transition-colors">
                     {video.candidateName}
                   </h4>
-                  <p className="text-xs text-[#6B7280]">{video.roleApplied}</p>
-                  <p className="mt-1 text-[10px] font-mono text-[#6B7280]">Submission {submissionId} · {submissionVideos.length} videos</p>
+                  <p className="text-xs text-[#8A8580]">{video.roleApplied}</p>
+                  <p className="mt-1 text-[10px] text-[#8A8580]">{submissionVideos.length} videos</p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-red-100 flex items-center justify-between text-xs text-[#6B7280]">
+                <div className="mt-4 pt-3 border-t border-red-100 flex items-center justify-between text-xs text-[#8A8580]">
                   <span>Assigned: {video.assignedEvaluatorName?.split(' ')[0] || 'Unassigned'}</span>
                   <span className="text-red-600 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Evaluate <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -330,13 +329,13 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-[#F5DADB] bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#E8E5E1] bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-xs text-[#8A8580]">
           <span>Submissions per page</span>
           <select
             value={pageSize}
             onChange={(event) => setPageSize(Number(event.target.value))}
-            className="rounded-lg border border-[#F5DADB] bg-white px-2 py-1.5 text-xs text-[#1F1617]"
+            className="rounded-lg border border-[#E8E5E1] bg-white px-2 py-1.5 text-xs text-[#101010]"
             aria-label="Submissions per page"
           >
             <option value={10}>10</option>
@@ -350,16 +349,16 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
             type="button"
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={page <= 1 || isLoading}
-            className="rounded-lg border border-[#F5DADB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-[#E8E5E1] px-3 py-1.5 text-xs font-semibold text-[#8A8580] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
           </button>
-          <span className="min-w-16 text-center text-xs text-[#6B7280]">Page {page} of {pageCount}</span>
+          <span className="min-w-16 text-center text-xs text-[#8A8580]">Page {page} of {pageCount}</span>
           <button
             type="button"
             onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
             disabled={page >= pageCount || isLoading}
-            className="rounded-lg border border-[#F5DADB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-[#E8E5E1] px-3 py-1.5 text-xs font-semibold text-[#8A8580] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
           </button>

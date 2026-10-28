@@ -20,13 +20,15 @@ const upload = multer({
   }),
   limits: { fileSize: 500 * 1024 * 1024, files: 26 },
   fileFilter: (_request, file, callback) => {
+    const mimeType = file.mimetype.split(';', 1)[0].trim().toLowerCase();
     const acceptedTypes = file.fieldname === 'videos'
       ? ['video/mp4', 'video/webm', 'video/quicktime']
       : ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
-    if (!acceptedTypes.includes(file.mimetype)) {
+    if (!acceptedTypes.includes(mimeType)) {
       callback(new PortalError('Upload an MP4, WebM, or MOV video.'));
       return;
     }
+    file.mimetype = mimeType;
     callback(null, true);
   },
 });
@@ -113,7 +115,10 @@ export function createPortalRouter(): Router {
     try {
       const { recipient, smtpPassword = '', ...settings } = request.body || {};
       if (typeof recipient !== 'string' || !/^\S+@\S+\.\S+$/.test(recipient)) throw new PortalError('Enter a valid test recipient email.');
-      await emailService.sendTestEmail(settings, String(smtpPassword), recipient);
+      const providedPassword = String(smtpPassword).trim();
+      const savedCredentials = providedPassword ? null : await repository.getSmtpCredentials();
+      const password = providedPassword || savedCredentials?.password || '';
+      await emailService.sendTestEmail(settings, password, recipient);
       response.json({ success: true });
     } catch (error) { next(error); }
   });
@@ -368,9 +373,19 @@ export function createPortalRouter(): Router {
     try {
       const videos = uploadedFiles?.videos || [];
       const documents = uploadedFiles?.documents || [];
-      if (!videos.length) throw new PortalError('Select at least one video file to upload.');
+      if (videos.length !== 6) throw new PortalError('Submit one video response for each of the six questions.');
       if (documents.some((document) => document.size > 25 * 1024 * 1024)) {
         throw new PortalError('Each supporting document must be 25 MB or smaller.');
+      }
+      let questionPrompts: unknown;
+      try {
+        questionPrompts = JSON.parse(String(request.body.questionPrompts || ''));
+      } catch {
+        throw new PortalError('The six interview questions are missing. Reload the page and try again.');
+      }
+      if (!Array.isArray(questionPrompts) || questionPrompts.length !== videos.length
+        || !questionPrompts.every((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim()))) {
+        throw new PortalError('Submit one video response for each of the six questions.');
       }
       const keySkills = String(request.body.keySkills || '').split(',').map((value) => value.trim()).filter(Boolean);
       const result = await service.uploadCandidate(request.params.token, {
@@ -381,10 +396,11 @@ export function createPortalRouter(): Router {
         submissionType: String(request.body.submissionType || ''),
         bio: String(request.body.bio || ''),
         keySkills,
-        videos: videos.map((file) => ({
+        videos: videos.map((file, index) => ({
           filePath: path.relative(process.cwd(), file.path),
           originalFilename: file.originalname,
           mimeType: file.mimetype,
+          questionPrompt: questionPrompts[index],
         })),
         documents: documents.map((file) => ({
           id: randomUUID(),

@@ -92,7 +92,7 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
   return (
   <section className="max-w-5xl space-y-6">
     <header>
-      <h2 className="text-2xl font-bold text-[#1F1617]">User &amp; Roles</h2>
+      <h2 className="text-2xl font-bold text-[#101010]">User &amp; Roles</h2>
       <p className="mt-1 text-xs text-red-900/60">Manage the administrator account and add portal users.</p>
     </header>
 
@@ -100,58 +100,58 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
       <button
         type="button"
         onClick={() => onAddUser('candidate')}
-        className="flex items-center gap-3 rounded-2xl border border-[#F5DADB] bg-white p-5 text-left shadow-xs transition-colors hover:border-red-300 hover:bg-rose-50/30"
+        className="flex items-center gap-3 rounded-2xl border border-[#E8E5E1] bg-white p-5 text-left shadow-xs transition-colors hover:border-red-300 hover:bg-rose-50/30"
       >
         <span className="material-symbols-outlined flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">person_add</span>
         <span>
-          <span className="block text-sm font-bold text-[#1F1617]">Add Candidate</span>
-          <span className="mt-1 block text-xs text-[#6B7280]">Create a candidate account</span>
+          <span className="block text-sm font-bold text-[#101010]">Add Candidate</span>
+          <span className="mt-1 block text-xs text-[#8A8580]">Create a candidate account</span>
         </span>
       </button>
       <button
         type="button"
         onClick={() => onAddUser('evaluator')}
-        className="flex items-center gap-3 rounded-2xl border border-[#F5DADB] bg-white p-5 text-left shadow-xs transition-colors hover:border-red-300 hover:bg-rose-50/30"
+        className="flex items-center gap-3 rounded-2xl border border-[#E8E5E1] bg-white p-5 text-left shadow-xs transition-colors hover:border-red-300 hover:bg-rose-50/30"
       >
         <span className="material-symbols-outlined flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">group_add</span>
         <span>
-          <span className="block text-sm font-bold text-[#1F1617]">Add Manager / Employer</span>
-          <span className="mt-1 block text-xs text-[#6B7280]">Create a reviewer account</span>
+          <span className="block text-sm font-bold text-[#101010]">Add Manager / Employer</span>
+          <span className="mt-1 block text-xs text-[#8A8580]">Create a reviewer account</span>
         </span>
       </button>
     </div>
 
-    <div className="rounded-2xl border border-[#F5DADB] bg-white p-6 shadow-xs">
+    <div className="rounded-2xl border border-[#E8E5E1] bg-white p-6 shadow-xs">
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-700">
           <span className="material-symbols-outlined">admin_panel_settings</span>
         </div>
         <div>
-          <h3 className="text-sm font-bold text-[#1F1617]">{name || 'P2P Admin'}</h3>
-          <p className="mt-1 text-xs text-[#6B7280]">Administrator</p>
+          <h3 className="text-sm font-bold text-[#101010]">{name || 'P2P Admin'}</h3>
+          <p className="mt-1 text-xs text-[#8A8580]">Administrator</p>
         </div>
       </div>
-      <div className="mt-6 border-t border-[#F5DADB] pt-4">
-        <p className="break-all text-sm font-medium text-[#1F1617]">{email}</p>
+      <div className="mt-6 border-t border-[#E8E5E1] pt-4">
+        <p className="break-all text-sm font-medium text-[#101010]">{email}</p>
       </div>
     </div>
 
-    <div className="overflow-hidden rounded-2xl border border-[#F5DADB] bg-white shadow-xs">
-      <div className="flex flex-col gap-4 border-b border-[#F5DADB] px-6 py-4 md:flex-row md:items-end md:justify-between">
+    <div className="overflow-hidden rounded-2xl border border-[#E8E5E1] bg-white shadow-xs">
+      <div className="flex flex-col gap-4 border-b border-[#E8E5E1] px-6 py-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h3 className="text-sm font-bold text-[#1F1617]">Users</h3>
+          <h3 className="text-sm font-bold text-[#101010]">Users</h3>
           <p className="mt-1 text-xs text-red-900/60">{totalUsers} matching accounts</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <label className="relative">
             <span className="sr-only">Search users</span>
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#9CA3AF]">search</span>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#8A8580]">search</span>
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search name or email"
-              className="w-full rounded-xl border border-[#F5DADB] py-2 pl-9 pr-3 text-xs text-[#1F1617] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 sm:w-56"
+              className="w-full rounded-xl border border-[#E8E5E1] py-2 pl-9 pr-3 text-xs text-[#101010] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 sm:w-56"
             />
           </label>
           <label>
@@ -159,7 +159,7 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
             <select
               value={roleFilter}
               onChange={(event) => setRoleFilter(event.target.value as 'all' | UserRole)}
-              className="w-full rounded-xl border border-[#F5DADB] bg-white px-3 py-2 text-xs text-[#1F1617] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 sm:w-48"
+              className="w-full rounded-xl border border-[#E8E5E1] bg-white px-3 py-2 text-xs text-[#101010] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 sm:w-48"
             >
               <option value="all">All roles</option>
               <option value="candidate">Candidates</option>
@@ -173,26 +173,26 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="border-b border-[#F5DADB] bg-red-50/40 text-[10px] font-bold uppercase tracking-wider text-red-900/60">
+            <tr className="border-b border-[#E8E5E1] bg-red-50/40 text-[10px] font-bold uppercase tracking-wider text-red-900/60">
               <th className="px-6 py-3">Name</th>
               <th className="px-6 py-3">Email</th>
               <th className="px-6 py-3">Role</th>
               <th className="px-6 py-3 text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#F5DADB] text-xs">
+          <tbody className="divide-y divide-[#E8E5E1] text-xs">
             {isLoadingUsers ? (
-              <tr><td colSpan={4} className="px-6 py-8 text-center text-[#6B7280]">Searching users...</td></tr>
+              <tr><td colSpan={4} className="px-6 py-8 text-center text-[#8A8580]">Searching users...</td></tr>
             ) : listedUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-[#6B7280]">
+                <td colSpan={4} className="px-6 py-8 text-center text-[#8A8580]">
                   {users.length ? 'No users match your search and filter.' : 'No users have been added yet.'}
                 </td>
               </tr>
             ) : listedUsers.map((user) => (
               <tr key={user.id} className="hover:bg-rose-50/30">
-                <td className="px-6 py-4 font-semibold text-[#1F1617]">{user.name}</td>
-                <td className="px-6 py-4 text-[#6B7280]">{user.email}</td>
+                <td className="px-6 py-4 font-semibold text-[#101010]">{user.name}</td>
+                <td className="px-6 py-4 text-[#8A8580]">{user.email}</td>
                 <td className="px-6 py-4">
                   <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                     user.role === 'evaluator'
@@ -222,13 +222,13 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col gap-3 border-t border-[#F5DADB] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+      <div className="flex flex-col gap-3 border-t border-[#E8E5E1] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-xs text-[#8A8580]">
           <span>Rows per page</span>
           <select
             value={pageSize}
             onChange={(event) => setPageSize(Number(event.target.value))}
-            className="rounded-lg border border-[#F5DADB] bg-white px-2 py-1.5 text-xs text-[#1F1617]"
+            className="rounded-lg border border-[#E8E5E1] bg-white px-2 py-1.5 text-xs text-[#101010]"
             aria-label="Rows per page"
           >
             <option value={10}>10</option>
@@ -242,16 +242,16 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
             type="button"
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={page <= 1}
-            className="rounded-lg border border-[#F5DADB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-[#E8E5E1] px-3 py-1.5 text-xs font-semibold text-[#8A8580] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
           </button>
-          <span className="min-w-16 text-center text-xs text-[#6B7280]">Page {page} of {pageCount}</span>
+          <span className="min-w-16 text-center text-xs text-[#8A8580]">Page {page} of {pageCount}</span>
           <button
             type="button"
             onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
             disabled={page >= pageCount}
-            className="rounded-lg border border-[#F5DADB] px-3 py-1.5 text-xs font-semibold text-[#6B7280] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-[#E8E5E1] px-3 py-1.5 text-xs font-semibold text-[#8A8580] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
           </button>

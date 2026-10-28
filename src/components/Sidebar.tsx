@@ -64,13 +64,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       id="sidebar-navigation"
-      className="hidden md:flex w-64 h-screen fixed left-0 top-0 bg-white text-[#1F1617] border-r border-[#F5DADB] flex-col z-50 select-none shadow-xs"
+      className="hidden md:flex w-64 h-screen fixed left-0 top-0 bg-white text-[#101010] border-r border-[#E8E5E1] flex-col z-50 select-none shadow-xs"
     >
       {/* Brand Header */}
-      <div className="p-6 border-b border-[#F5DADB] flex items-center gap-3 bg-gradient-to-r from-white via-rose-50/40 to-white">
+      <div className="p-6 border-b border-[#E8E5E1] flex items-center gap-3 bg-gradient-to-r from-white via-rose-50/40 to-white">
         <img src={p2pLogo} alt="" className="w-8 h-8 object-contain shrink-0" />
         <div>
-          <span className="font-bold text-lg tracking-tight text-[#1F1617] flex items-center gap-1.5">
+          <span className="font-bold text-lg tracking-tight text-[#101010] flex items-center gap-1.5">
             Interview<span className="text-red-600">Pro</span>
           </span>
         </div>
@@ -101,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${
                 isActive
                   ? 'bg-red-50 text-red-700 font-semibold border-l-3 border-red-600 shadow-xs'
-                  : 'text-[#6B7280] hover:text-red-700 hover:bg-rose-50/50'
+                  : 'text-[#8A8580] hover:text-red-700 hover:bg-rose-50/50'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 currentTab === 'settings'
                   ? 'bg-red-50 text-red-700 font-semibold border-l-3 border-red-600 shadow-xs'
-                  : 'text-[#6B7280] hover:text-red-700 hover:bg-rose-50/50'
+                  : 'text-[#8A8580] hover:text-red-700 hover:bg-rose-50/50'
               }`}
             >
               <span className={`material-symbols-outlined text-[20px] ${currentTab === 'settings' ? 'text-red-600' : 'opacity-75'}`}>
@@ -144,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* User Badge Footer */}
-      <div className="p-4 border-t border-[#F5DADB]">
+      <div className="p-4 border-t border-[#E8E5E1]">
         <div className="flex items-center gap-3 bg-gradient-to-r from-red-950 via-stone-900 to-red-900 text-white p-3 rounded-xl shadow-xs border border-red-900/30">
           <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
             {initials}

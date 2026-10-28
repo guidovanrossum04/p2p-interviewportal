@@ -90,8 +90,9 @@ export class PortalService {
   }
 
   async uploadCandidate(token: string, input: UploadInput): Promise<CandidateVideo[]> {
-    if (!input.candidateName.trim() || !input.candidateEmail.trim() || input.videos.length < 1 || input.videos.length > 6) {
-      throw new PortalError('Candidate name, email, and between one and six video files are required.');
+    if (!input.candidateName.trim() || !input.candidateEmail.trim() || input.videos.length !== 6
+      || input.videos.some((video) => !video.questionPrompt?.trim())) {
+      throw new PortalError('Candidate name, email, and one video response for each of the six questions are required.');
     }
     if (input.documents.length > 20) throw new PortalError('Upload no more than 20 supporting documents.');
     return this.repository.createCandidateVideos(hashToken(token), input);

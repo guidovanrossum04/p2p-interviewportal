@@ -23,7 +23,7 @@ export interface UploadInput {
   candidateEmail: string;
   roleApplied: string;
   department: string;
-  videos: { filePath: string; originalFilename: string; mimeType: string }[];
+  videos: { filePath: string; originalFilename: string; mimeType: string; questionPrompt?: string }[];
   documents: { id: string; filePath: string; originalFilename: string; mimeType: string; size: number }[];
   submissionType?: string;
   bio: string;
@@ -117,6 +117,7 @@ const videoFromRow = (row: VideoRow): CandidateVideo => {
     videoUrl: `/api/videos/${encodeURIComponent(row.id)}/file`,
     videoDuration: row.duration_seconds ? `${Math.floor(row.duration_seconds / 60)}:${String(row.duration_seconds % 60).padStart(2, '0')}` : '00:00',
     durationSeconds: Number(row.duration_seconds || 0),
+    questionPrompt: details.questionPrompt || '',
     bio: details.bio || '',
     keySkills: details.keySkills || [],
     submissionType: details.submissionType,
@@ -857,7 +858,7 @@ export class PortalRepository {
             JSON.stringify({
               bio: input.bio,
               keySkills: input.keySkills,
-              submissionType: input.submissionType,
+              questionPrompt: video.questionPrompt,
               submissionBatchId: link.submission_id,
               submissionId: link.submission_id,
               documents: input.documents.map((document) => ({ ...document, adminReviewStatus: 'pending', adminFeedback: '' })),

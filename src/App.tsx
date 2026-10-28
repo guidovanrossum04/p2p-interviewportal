@@ -922,7 +922,7 @@ export default function App() {
   // If explicitly logged out, render AuthScreen
   if (isRestoringAdminSession) {
     return (
-      <div className="min-h-screen bg-[#FAF4F4] flex items-center justify-center text-sm font-medium text-red-900">
+      <div className="min-h-screen bg-[#F5F2EE] flex items-center justify-center text-sm font-medium text-red-900">
         Restoring your admin session...
       </div>
     );
@@ -942,10 +942,10 @@ export default function App() {
     ? videos.filter((video) => getSubmissionId(video) === getSubmissionId(selectedVideoForEval))
     : [];
   return (
-    <div className="min-h-screen bg-[#FAF4F4] text-[#1F1617] flex selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-[#F5F2EE] text-[#101010] flex selection:bg-red-600 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1F1617] text-white px-4 py-2.5 rounded-xl shadow-xl border border-red-900/50 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#101010] text-white px-4 py-2.5 rounded-xl shadow-xl border border-red-900/50 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <span className="material-symbols-outlined text-red-400 text-base">check_circle</span>
           <span className="text-xs font-medium">{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="text-red-200 hover:text-white ml-2 text-xs cursor-pointer">
@@ -975,15 +975,15 @@ export default function App() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs md:hidden flex" onClick={() => setMobileMenuOpen(false)}>
           <div
-            className="w-72 bg-white text-[#1F1617] h-full p-4 flex flex-col border-r border-[#F5DADB] shadow-2xl"
+            className="w-72 bg-white text-[#101010] h-full p-4 flex flex-col border-r border-[#E8E5E1] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center pb-4 border-b border-[#F5DADB] mb-4">
+            <div className="flex justify-between items-center pb-4 border-b border-[#E8E5E1] mb-4">
               <div className="flex items-center gap-2.5">
                 <img src={p2pLogo} alt="" className="w-8 h-8 object-contain" />
-                <span className="font-bold text-[#1F1617] text-sm tracking-tight">Interview<span className="text-red-600">Pro</span></span>
+                <span className="font-bold text-[#101010] text-sm tracking-tight">Interview<span className="text-red-600">Pro</span></span>
               </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="text-[#6B7280] hover:text-red-700 cursor-pointer">
+              <button onClick={() => setMobileMenuOpen(false)} className="text-[#8A8580] hover:text-red-700 cursor-pointer">
                 <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
@@ -997,7 +997,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'candidate_hub' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                      currentTab === 'candidate_hub' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">video_library</span> My Submissions
@@ -1008,7 +1008,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'guidelines' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                      currentTab === 'guidelines' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">help_outline</span> Prep &amp; Guidelines
@@ -1022,7 +1022,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'overview' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                      currentTab === 'overview' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">dashboard</span> Overview
@@ -1033,7 +1033,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'links' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                      currentTab === 'links' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">link</span> Shareable Links
@@ -1044,7 +1044,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'users' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                      currentTab === 'users' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">group</span> User &amp; Roles
@@ -1055,7 +1055,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'videos' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                      currentTab === 'videos' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">video_library</span> Submissions
@@ -1069,7 +1069,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'dashboard' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                      currentTab === 'dashboard' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">dashboard</span> Dashboard
@@ -1083,7 +1083,7 @@ export default function App() {
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    currentTab === 'settings' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#6B7280] hover:text-[#1F1617] hover:bg-red-50/50'
+                    currentTab === 'settings' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
                   }`}
                 >
                   <span className="material-symbols-outlined text-base">settings</span> Settings
@@ -1098,7 +1098,7 @@ export default function App() {
       <div className="flex-1 flex flex-col md:ml-64 min-w-0">
         {/* Zero-Login Link Session Banner (Active when in Candidate or Evaluator mode or via link) */}
         {activeInvite && (
-          <div className="bg-[#1F1617] text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 border-b border-red-900/40 shadow-xs animate-in fade-in duration-200">
+          <div className="bg-[#101010] text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 border-b border-red-900/40 shadow-xs animate-in fade-in duration-200">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-sm text-red-500">vpn_key</span>
               <span>

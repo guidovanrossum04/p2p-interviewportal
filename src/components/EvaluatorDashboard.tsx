@@ -43,9 +43,9 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
   return (
     <div id="evaluator-dashboard-view" className="max-w-7xl mx-auto space-y-8">
       {/* Header & Sync button */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 bg-white p-6 rounded-2xl border border-[#F5DADB] shadow-xs">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-[#1F1617] tracking-tight">Manager / Employer Review Queue</h2>
+          <h2 className="text-2xl font-bold text-[#101010] tracking-tight">Manager / Employer Review Queue</h2>
           <p className="text-xs text-red-900/60 mt-1">
             Welcome back, Sarah. You have <strong className="text-red-600 font-bold">{stats.pendingReview} candidate interviews</strong> pending review.
           </p>
@@ -71,7 +71,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
         {/* Total Assigned */}
         <div
           id="stat-card-total-assigned"
-          className="bg-white border border-[#F5DADB] rounded-2xl p-6 flex flex-col justify-between hover:border-red-400 transition-all duration-200 group shadow-xs cursor-pointer"
+          className="bg-white border border-[#E8E5E1] rounded-2xl p-6 flex flex-col justify-between hover:border-red-400 transition-all duration-200 group shadow-xs cursor-pointer"
           onClick={() => setStatusFilter('all')}
         >
           <div className="flex justify-between items-start">
@@ -79,7 +79,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
             <span className="text-xs font-semibold text-red-700 bg-red-50 px-2.5 py-0.5 rounded-md">Active Cycle</span>
           </div>
           <div className="mt-4">
-            <div className="text-3xl font-extrabold text-[#1F1617]">{stats.totalAssigned}</div>
+            <div className="text-3xl font-extrabold text-[#101010]">{stats.totalAssigned}</div>
             <div className="text-xs text-red-900/60 mt-1">Assigned videos across submissions</div>
           </div>
         </div>
@@ -87,7 +87,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
         {/* Pending Review */}
         <div
           id="stat-card-pending-review"
-          className="bg-white border border-[#F5DADB] rounded-2xl p-6 flex flex-col justify-between hover:border-red-400 transition-all duration-200 group shadow-xs cursor-pointer"
+          className="bg-white border border-[#E8E5E1] rounded-2xl p-6 flex flex-col justify-between hover:border-red-400 transition-all duration-200 group shadow-xs cursor-pointer"
           onClick={() => setStatusFilter('pending')}
         >
           <div className="flex justify-between items-start">
@@ -103,7 +103,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
         {/* Completed */}
         <div
           id="stat-card-evaluations-completed"
-          className="bg-white border border-[#F5DADB] rounded-2xl p-6 flex flex-col justify-between hover:border-red-400 transition-all duration-200 group shadow-xs cursor-pointer"
+          className="bg-white border border-[#E8E5E1] rounded-2xl p-6 flex flex-col justify-between hover:border-red-400 transition-all duration-200 group shadow-xs cursor-pointer"
           onClick={() => setStatusFilter('completed')}
         >
           <div className="flex justify-between items-start">
@@ -118,10 +118,10 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
       </div>
 
       {/* Assigned Videos Queue Table */}
-      <div id="assigned-videos-queue-card" className="bg-white border border-[#F5DADB] rounded-2xl overflow-hidden shadow-xs">
-        <div className="p-6 border-b border-[#F5DADB] flex justify-between items-center bg-white">
+      <div id="assigned-videos-queue-card" className="bg-white border border-[#E8E5E1] rounded-2xl overflow-hidden shadow-xs">
+        <div className="p-6 border-b border-[#E8E5E1] flex justify-between items-center bg-white">
           <div className="flex items-center gap-3">
-            <h3 className="text-base font-bold text-[#1F1617]">Live Evaluation Queue</h3>
+            <h3 className="text-base font-bold text-[#101010]">Live Evaluation Queue</h3>
             {statusFilter !== 'all' && (
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700 uppercase">
                 Filter: {statusFilter.replace('_', ' ')}
@@ -140,13 +140,13 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
             </button>
 
             {showFilterDropdown && (
-              <div className="absolute right-0 top-10 w-44 bg-white border border-[#F5DADB] rounded-xl shadow-lg z-30 py-1 text-xs">
+              <div className="absolute right-0 top-10 w-44 bg-white border border-[#E8E5E1] rounded-xl shadow-lg z-30 py-1 text-xs">
                 <button
                   onClick={() => {
                     setStatusFilter('all');
                     setShowFilterDropdown(false);
                   }}
-                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'all' ? 'font-bold text-red-700 bg-red-50' : 'text-[#6B7280]'}`}
+                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'all' ? 'font-bold text-red-700 bg-red-50' : 'text-[#8A8580]'}`}
                 >
                   All Statuses
                 </button>
@@ -155,7 +155,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
                     setStatusFilter('pending');
                     setShowFilterDropdown(false);
                   }}
-                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'pending' ? 'font-bold text-red-700 bg-red-50' : 'text-[#6B7280]'}`}
+                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'pending' ? 'font-bold text-red-700 bg-red-50' : 'text-[#8A8580]'}`}
                 >
                   Pending Only
                 </button>
@@ -164,7 +164,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
                     setStatusFilter('in_review');
                     setShowFilterDropdown(false);
                   }}
-                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'in_review' ? 'font-bold text-red-700 bg-red-50' : 'text-[#6B7280]'}`}
+                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'in_review' ? 'font-bold text-red-700 bg-red-50' : 'text-[#8A8580]'}`}
                 >
                   In Review Only
                 </button>
@@ -173,7 +173,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
                     setStatusFilter('completed');
                     setShowFilterDropdown(false);
                   }}
-                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'completed' ? 'font-bold text-red-700 bg-red-50' : 'text-[#6B7280]'}`}
+                  className={`w-full text-left px-3 py-2 hover:bg-red-50 cursor-pointer ${statusFilter === 'completed' ? 'font-bold text-red-700 bg-red-50' : 'text-[#8A8580]'}`}
                 >
                   Completed Only
                 </button>
@@ -185,7 +185,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[#F5DADB] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
+              <tr className="border-b border-[#E8E5E1] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
                 <th className="px-6 py-3.5 font-bold">Candidate</th>
                 <th className="px-6 py-3.5 font-bold">Role Applied</th>
                 <th className="px-6 py-3.5 font-bold">Submitted</th>
@@ -193,10 +193,10 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
                 <th className="px-6 py-3.5 font-bold text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F5DADB] text-xs">
+            <tbody className="divide-y divide-[#E8E5E1] text-xs">
               {submissions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-[#9CA3AF]">
+                  <td colSpan={5} className="px-6 py-8 text-center text-[#8A8580]">
                     No videos found matching the current filter criteria.
                   </td>
                 </tr>
@@ -221,23 +221,22 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
                             {getInitials(video.candidateName)}
                           </div>
                           <div>
-                            <span className="font-bold text-[#1F1617] block group-hover:text-red-700 transition-colors">
+                            <span className="font-bold text-[#101010] block group-hover:text-red-700 transition-colors">
                               {video.candidateName}
                             </span>
                             <span className="text-[11px] text-red-900/60">{video.candidateEmail}</span>
-                            <span className="block text-[10px] font-mono text-[#6B7280] mt-1">Submission {submissionId}</span>
                           </div>
                         </div>
                       </td>
 
                       {/* Role Applied */}
-                      <td className="px-6 py-4 text-[#1F1617] font-medium">
+                      <td className="px-6 py-4 text-[#101010] font-medium">
                         {video.roleApplied}
-                        <span className="block text-[10px] text-[#6B7280]">{submissionVideos.length} video{submissionVideos.length === 1 ? '' : 's'}</span>
+                        <span className="block text-[10px] text-[#8A8580]">{submissionVideos.length} video{submissionVideos.length === 1 ? '' : 's'}</span>
                       </td>
 
                       {/* Submitted */}
-                      <td className="px-6 py-4 text-[#6B7280]">{video.submittedTimeAgo}</td>
+                      <td className="px-6 py-4 text-[#8A8580]">{video.submittedTimeAgo}</td>
 
                       {/* Status */}
                       <td className="px-6 py-4">

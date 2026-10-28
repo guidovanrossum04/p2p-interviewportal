@@ -179,12 +179,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF4F4] text-[#1F1617] flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-[#F5F2EE] text-[#101010] flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-red-600 selection:text-white">
       <main className="w-full max-w-lg">
         {/* Brand Header */}
         <div className="text-center mb-6">
           <img src={p2pLogo} alt="P2P logo" className="w-18 h-18 object-contain mx-auto mb-3" />
-          <h1 className="text-3xl font-black text-[#1F1617] tracking-tight">
+          <h1 className="text-3xl font-extrabold text-[#101010] tracking-tight">
             Interview<span className="text-red-600">Pro</span>
           </h1>
           <p className="text-xs text-red-900/60 mt-1 font-medium">
@@ -201,7 +201,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         )}
 
         {/* Card Container for Separate Portal Logins */}
-        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xs border border-[#F5DADB]">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xs border border-[#E8E5E1]">
           {/* ======================================================== */}
           {/* 1. SEPARATE PAGE: ADMINISTRATOR PORTAL LOGIN */}
           {/* ======================================================== */}
@@ -210,7 +210,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div className="border-b border-red-100 pb-4">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-red-600 text-lg">shield</span>
-                  <h2 className="font-extrabold text-base text-[#1F1617]">Administrator Sign In</h2>
+                  <h2 className="font-extrabold text-base text-[#101010]">Administrator Sign In</h2>
                 </div>
                 <p className="text-xs text-red-900/60 leading-relaxed">
                   Restricted system management access. Only administrators can configure evaluation rubrics, dispatch
@@ -220,7 +220,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
               <form onSubmit={handleAdminSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1.5" htmlFor="admin-email">
+                  <label className="block text-xs font-semibold text-[#101010] mb-1.5" htmlFor="admin-email">
                     Administrator Work Email
                   </label>
                   <input
@@ -230,13 +230,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                     placeholder="p2precruitment2025@gmail.com"
-                    className="w-full rounded-xl border border-[#F5DADB] px-3.5 py-2.5 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#FAF4F4]/50 focus:bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#F5F2EE]/50 focus:bg-white"
                   />
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-xs font-semibold text-[#1F1617]" htmlFor="admin-password">
+                    <label className="block text-xs font-semibold text-[#101010]" htmlFor="admin-password">
                       Admin Password
                     </label>
                     <span className="text-[11px] text-red-900/60 font-mono">256-bit encrypted</span>
@@ -247,7 +247,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     required
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full rounded-xl border border-[#F5DADB] px-3.5 py-2.5 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#FAF4F4]/50 focus:bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#F5F2EE]/50 focus:bg-white"
                   />
                 </div>
 
@@ -278,7 +278,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div className="border-b border-red-100 pb-4">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-red-600 text-lg">rate_review</span>
-                  <h2 className="font-extrabold text-base text-[#1F1617]">Manager / Employer Portal</h2>
+                  <h2 className="font-extrabold text-base text-[#101010]">Manager / Employer Portal</h2>
                 </div>
                 <p className="text-xs text-red-900/60 leading-relaxed">
                   Access your review queue and grade candidate interview videos against standardized scoring rubrics.
@@ -286,14 +286,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </div>
 
               {/* Sub Mode: Admin Link / Token vs Email Sign-In */}
-              <div className="flex border border-[#F5DADB] rounded-xl p-1 bg-red-50/30 text-xs">
+              <div className="flex border border-[#E8E5E1] rounded-xl p-1 bg-red-50/30 text-xs">
                 <button
                   type="button"
                   onClick={() => setEvaluatorMode('token')}
                   className={`flex-1 py-1.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     evaluatorMode === 'token'
                       ? 'bg-white text-red-700 font-bold shadow-xs border border-red-100'
-                      : 'text-[#6B7280] hover:text-[#1F1617]'
+                      : 'text-[#8A8580] hover:text-[#101010]'
                   }`}
                 >
                   <span className="material-symbols-outlined text-sm">link</span>
@@ -305,7 +305,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   className={`flex-1 py-1.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     evaluatorMode === 'credentials'
                       ? 'bg-white text-red-700 font-bold shadow-xs border border-red-100'
-                      : 'text-[#6B7280] hover:text-[#1F1617]'
+                      : 'text-[#8A8580] hover:text-[#101010]'
                   }`}
                 >
                   <span className="material-symbols-outlined text-sm">badge</span>
@@ -316,7 +316,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <form onSubmit={handleEvaluatorSubmit} className="space-y-4">
                 {evaluatorMode === 'token' ? (
                   <div>
-                    <label className="block text-xs font-semibold text-[#1F1617] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#101010] mb-1.5">
                       Admin Evaluation Invite Token / Link Code *
                     </label>
                     <div className="relative">
@@ -329,7 +329,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         value={evaluatorToken}
                         onChange={(e) => setEvaluatorToken(e.target.value)}
                         placeholder="e.g. INV-EVAL-3921"
-                        className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#F5DADB] text-xs font-mono font-bold text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FAF4F4]/50 focus:bg-white"
+                        className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E8E5E1] text-xs font-mono font-bold text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
                       />
                     </div>
                     <p className="text-[11px] text-red-900/60 mt-1.5">
@@ -339,7 +339,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 ) : (
                   <>
                     <div>
-                      <label className="block text-xs font-semibold text-[#1F1617] mb-1.5">
+                      <label className="block text-xs font-semibold text-[#101010] mb-1.5">
                         Manager / Employer Work Email *
                       </label>
                       <input
@@ -348,17 +348,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         value={evaluatorEmail}
                         onChange={(e) => setEvaluatorEmail(e.target.value)}
                         placeholder="manager@company.com"
-                        className="w-full rounded-xl border border-[#F5DADB] px-3.5 py-2.5 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FAF4F4]/50 focus:bg-white"
+                        className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#1F1617] mb-1.5">Password</label>
+                      <label className="block text-xs font-semibold text-[#101010] mb-1.5">Password</label>
                       <input
                         type="password"
                         required
                         value={evaluatorPassword}
                         onChange={(e) => setEvaluatorPassword(e.target.value)}
-                        className="w-full rounded-xl border border-[#F5DADB] px-3.5 py-2.5 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FAF4F4]/50 focus:bg-white"
+                        className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
                       />
                     </div>
                   </>
@@ -389,7 +389,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div className="border-b border-red-100 pb-4">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-red-600 text-lg">video_camera_front</span>
-                  <h2 className="font-extrabold text-base text-[#1F1617]">Candidate Video Submission Portal</h2>
+                  <h2 className="font-extrabold text-base text-[#101010]">Candidate Video Submission Portal</h2>
                 </div>
                 <p className="text-xs text-red-900/60 leading-relaxed">
                   Upload or record your asynchronous self-introduction video. Access is granted exclusively via invitation
@@ -412,7 +412,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
               <form onSubmit={handleCandidateSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1.5">
+                  <label className="block text-xs font-semibold text-[#101010] mb-1.5">
                     Admin Upload Invitation Token or Link *
                   </label>
                   <div className="relative">
@@ -425,7 +425,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       value={candidateToken}
                       onChange={(e) => setCandidateToken(e.target.value)}
                       placeholder="e.g. INV-CAND-7842"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#F5DADB] text-xs font-mono font-bold text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FAF4F4]/50 focus:bg-white"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E8E5E1] text-xs font-mono font-bold text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
                     />
                   </div>
                   <p className="text-[11px] text-red-900/60 mt-1.5">
@@ -434,7 +434,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1.5">
+                  <label className="block text-xs font-semibold text-[#101010] mb-1.5">
                     Your Registered Email Address (Optional Confirmation)
                   </label>
                   <input
@@ -442,7 +442,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     value={candidateEmail}
                     onChange={(e) => setCandidateEmail(e.target.value)}
                       placeholder="candidate@email.com"
-                    className="w-full rounded-xl border border-[#F5DADB] px-3.5 py-2.5 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FAF4F4]/50 focus:bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
                   />
                 </div>
 

@@ -1,113 +1,220 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Camera, CircleStop, RotateCcw, Upload, Video } from 'lucide-react';
 import { CandidateDocument, CandidateVideo, User } from '../types';
 
 interface SelfIntroUploadModalProps {
   currentUser: User;
   linkToken?: string;
-  reuploadVideo?: CandidateVideo;
   onClose: () => void;
   onSubmit: (videos: CandidateVideo[], emailNotice?: string) => void;
 }
 
+const questions = [
+  'Please tell me a little bit about yourself. For example, who you are, your employment history and your current achievements?',
+  'Tell me about a time that you provided outstanding customer service?',
+  'How would you deal with a difficult patient?',
+  'If you were in a situation where you could not read the prescription, what would you do?',
+  'Describe a clinical intervention that you have made?',
+  'The role as a pharmacist requires you to lead and manage your team. Describe to me how you will lead and manage your team effectively?',
+];
+
 export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
   currentUser,
   linkToken,
-  reuploadVideo,
   onClose,
   onSubmit,
 }) => {
-  const [activeMode, setActiveMode] = useState<'upload' | 'record'>('upload');
-  
-  // Form fields
   const [candidateName, setCandidateName] = useState(currentUser.name);
   const [candidateEmail, setCandidateEmail] = useState(currentUser.email);
-  const [roleApplied, setRoleApplied] = useState(currentUser.title?.replace(/^Candidate for /, '') || 'Senior Frontend Engineer');
-  const [submissionType, setSubmissionType] = useState<'self_introduction' | 'technical_interview' | 'portfolio_walkthrough'>('self_introduction');
-  const [bio, setBio] = useState('');
-  const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
+  const [roleApplied, setRoleApplied] = useState(currentUser.title?.replace(/^Candidate for /, '') || '');
+  const [answers, setAnswers] = useState<(File | null)[]>(() => questions.map(() => null));
+  const [answerModes, setAnswerModes] = useState<('upload' | 'record')[]>(() => questions.map(() => 'upload'));
+  const [previewUrls, setPreviewUrls] = useState<(string | null)[]>(() => questions.map(() => null));
   const [selectedDocuments, setSelectedDocuments] = useState<File[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Recording mode states
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedSeconds, setRecordedSeconds] = useState(0);
-  const [hasRecorded, setHasRecorded] = useState(false);
-  const [activePromptIndex, setActivePromptIndex] = useState(0);
+  const [recordingIndex, setRecordingIndex] = useState<number | null>(null);
+  const [recordedSeconds, setRecordedSeconds] = useState<number[]>(() => questions.map(() => 0));
+  const [recordingStream, setRecordingStream] = useState<MediaStream | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
-  const timerRef = useRef<number | null>(null);
+  const uploadInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const previewUrlsRef = useRef<(string | null)[]>(questions.map(() => null));
 
-  const prompts = [
-    '1. Introduce yourself, your technical journey, and key areas of expertise.',
-    '2. Highlight your most impactful recent project and architectural decisions.',
-    '3. What motivates you about this role and how do you collaborate within engineering teams?',
-  ];
-
-  // Recording timer
   useEffect(() => {
-    if (isRecording) {
-      timerRef.current = window.setInterval(() => {
-        setRecordedSeconds((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+    const preview = videoPreviewRef.current;
+    if (!preview || !recordingStream) return;
+
+    preview.srcObject = recordingStream;
+    const playPreview = () => {
+      preview.play().then(() => setPreviewError(null)).catch((error: unknown) => {
+        console.error('Could not start the live camera preview.', error);
+        setPreviewError('Camera is recording, but the live preview could not start. Check browser camera permissions and try again.');
+      });
     };
-  }, [isRecording]);
 
-  const handleStartRecord = () => {
-    setIsRecording(true);
-    setHasRecorded(true);
+    if (preview.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      playPreview();
+    } else {
+      preview.addEventListener('loadedmetadata', playPreview, { once: true });
+    }
+
+    return () => {
+      preview.removeEventListener('loadedmetadata', playPreview);
+      preview.pause();
+      preview.srcObject = null;
+    };
+  }, [recordingStream]);
+
+  useEffect(() => {
+    if (recordingIndex === null) return;
+    const timer = window.setInterval(() => {
+      setRecordedSeconds((seconds) => seconds.map((value, index) => index === recordingIndex ? value + 1 : value));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [recordingIndex]);
+
+  useEffect(() => () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder?.state === 'recording') {
+      recorder.onstop = null;
+      recorder.stop();
+    }
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    previewUrlsRef.current.forEach((url) => {
+      if (url) URL.revokeObjectURL(url);
+    });
+  }, []);
+
+  const replaceAnswer = (index: number, file: File | null, previewUrl: string | null = null) => {
+    setAnswers((current) => current.map((answer, answerIndex) => answerIndex === index ? file : answer));
+    const previousUrl = previewUrlsRef.current[index];
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
+    const updatedPreviewUrls = [...previewUrlsRef.current];
+    updatedPreviewUrls[index] = previewUrl;
+    previewUrlsRef.current = updatedPreviewUrls;
+    setPreviewUrls(updatedPreviewUrls);
   };
 
-  const handleStopRecord = () => {
-    setIsRecording(false);
-  };
-
-  const handleRetake = () => {
-    setIsRecording(false);
-    setRecordedSeconds(0);
-    setHasRecorded(false);
-  };
-
-  const handleVideosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files: File[] = Array.from(e.currentTarget.files || []);
-    if (files.length > 6) {
-      setUploadError('Select no more than six videos.');
-      e.target.value = '';
+  const handleStartRecording = async (index: number) => {
+    setUploadError(null);
+    setPreviewError(null);
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setUploadError('Video recording is not supported by this browser. Upload a video file instead.');
       return;
     }
-    setSelectedVideos(files);
+    let requestedStream: MediaStream | null = null;
+    try {
+      requestedStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = requestedStream;
+      if (stream.getVideoTracks().length === 0) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error('No camera was found. Connect a camera and try again.');
+      }
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error('No microphone was found. Connect a microphone and try again.');
+      }
+      audioTracks.forEach((track) => { track.enabled = true; });
+      recordingStreamRef.current = stream;
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/mp4',
+      ];
+      const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        setUploadError('The recording could not be completed. Check your camera and microphone permissions, then try again.');
+      };
+      recorder.onstop = () => {
+        const recordedMimeType = recorder.mimeType || mimeType || 'video/webm';
+        const containerType = recordedMimeType.split(';', 1)[0].trim().toLowerCase();
+        const extension = containerType === 'video/mp4' ? 'mp4' : containerType === 'video/quicktime' ? 'mov' : 'webm';
+        const recordedBlob = new Blob(recordingChunksRef.current, { type: recordedMimeType });
+        if (recordedBlob.size > 0) {
+          const file = new File([recordedBlob], `question-${index + 1}.${extension}`, { type: recordedMimeType });
+          replaceAnswer(index, file, URL.createObjectURL(recordedBlob));
+          setUploadError(null);
+        } else {
+          setUploadError('No video was captured. Check camera and microphone permissions, then record again.');
+        }
+        stream.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+        setRecordingStream(null);
+        setRecordingIndex(null);
+        setPreviewError(null);
+        mediaRecorderRef.current = null;
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start(1000);
+      setRecordingStream(stream);
+      setAnswerModes((modes) => modes.map((mode, modeIndex) => modeIndex === index ? 'record' : mode));
+      setRecordingIndex(index);
+    } catch (error) {
+      requestedStream?.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
+      mediaRecorderRef.current = null;
+      setRecordingStream(null);
+      setRecordingIndex(null);
+      setPreviewError(null);
+      setUploadError(error instanceof Error ? `Could not start recording: ${error.message}` : 'Could not access your camera and microphone.');
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+  };
+
+  const handleRetake = (index: number) => {
+    replaceAnswer(index, null);
+    setRecordedSeconds((seconds) => seconds.map((value, answerIndex) => answerIndex === index ? 0 : value));
     setUploadError(null);
   };
 
-  const handleDocumentsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files: File[] = Array.from(e.currentTarget.files || []);
+  const handleDocumentsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.currentTarget.files ? [...event.currentTarget.files] : [];
     if (files.length > 20) {
       setUploadError('Select no more than 20 supporting documents.');
-      e.target.value = '';
+      event.target.value = '';
       return;
     }
     if (files.some((file) => file.size > 25 * 1024 * 1024)) {
       setUploadError('Each supporting document must be 25 MB or smaller.');
-      e.target.value = '';
+      event.target.value = '';
       return;
     }
     setSelectedDocuments(files);
     setUploadError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (reuploadVideo ? selectedVideos.length !== 1 : selectedVideos.length < 1 || selectedVideos.length > 6) {
-      setUploadError(reuploadVideo ? 'Choose exactly one replacement video.' : 'Choose between one and six video files.');
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (answers.some((answer) => !answer)) {
+      setUploadError('Provide a video response for each of the six questions before submitting.');
       return;
     }
-    setIsSubmitting(true);
+    if (recordingIndex !== null) {
+      setUploadError('Stop the active recording before submitting.');
+      return;
+    }
 
+    setIsSubmitting(true);
+    setUploadError(null);
     try {
+      const submittedAnswers = answers.filter((answer): answer is File => answer !== null);
+      if (submittedAnswers.length !== questions.length) {
+        setUploadError('Provide a video response for each of the six questions before submitting.');
+        return;
+      }
       let newVideos: CandidateVideo[];
       let emailNotice = '';
       if (linkToken) {
@@ -116,29 +223,21 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
         formData.append('candidateEmail', candidateEmail);
         formData.append('roleApplied', roleApplied);
         formData.append('department', '');
-        formData.append('submissionType', submissionType);
-        formData.append('bio', bio);
+        formData.append('questionPrompts', JSON.stringify(questions));
+        formData.append('bio', '');
         formData.append('keySkills', '');
-        selectedVideos.forEach((file) => formData.append('videos', file));
+        submittedAnswers.forEach((file) => formData.append('videos', file));
         selectedDocuments.forEach((file) => formData.append('documents', file));
-        const uploadPath = reuploadVideo
-          ? `/api/public/links/${encodeURIComponent(linkToken)}/reupload/${encodeURIComponent(reuploadVideo.id)}`
-          : `/api/public/links/${encodeURIComponent(linkToken)}/upload`;
-        const response = await fetch(uploadPath, {
+        const response = await fetch(`/api/public/links/${encodeURIComponent(linkToken)}/upload`, {
           method: 'POST',
           body: formData,
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Video upload failed.');
-        if (reuploadVideo) {
-          if (!result.video) throw new Error('The server did not confirm the replacement upload.');
-          newVideos = [result.video as CandidateVideo];
-        } else {
-          if (!Array.isArray(result.videos) || result.videos.length === 0) {
-            throw new Error('The server did not confirm the video upload.');
-          }
-          newVideos = result.videos as CandidateVideo[];
+        if (!Array.isArray(result.videos) || result.videos.length !== questions.length) {
+          throw new Error('The server did not confirm all six video responses.');
         }
+        newVideos = result.videos as CandidateVideo[];
         emailNotice = typeof result.emailNotice === 'string' ? result.emailNotice : '';
       } else {
         const submittedAt = new Date().toISOString();
@@ -146,7 +245,7 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
           const url = URL.createObjectURL(file);
           return { id: `doc-${Date.now()}-${index}`, name: file.name, mimeType: file.type, size: file.size, url, downloadUrl: url };
         });
-        newVideos = selectedVideos.map((file, index) => ({
+        newVideos = submittedAnswers.map((file, index) => ({
           id: `vid-${Date.now()}-${index}`,
           candidateName,
           candidateEmail,
@@ -155,17 +254,16 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
           submittedAt,
           submittedTimeAgo: 'Just now',
           status: 'pending',
-          submissionType,
           keySkills: [],
-          bio,
-          videoUrl: URL.createObjectURL(file),
+          bio: '',
+          questionPrompt: questions[index],
+          videoUrl: previewUrls[index] || URL.createObjectURL(file),
           videoDuration: '00:00',
           durationSeconds: 0,
-          batchName: 'Candidate Self-Introductions',
+          batchName: 'Pharmacist Assessment',
           documents,
         }));
       }
-      setIsSubmitting(false);
       onSubmit(newVideos, emailNotice);
       onClose();
     } catch (error) {
@@ -175,11 +273,7 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
     }
   };
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
+  const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
   return (
     <div
@@ -188,319 +282,156 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl border border-[#F5DADB] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden text-[#1F1617]"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl border border-[#E8E5E1] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden text-[#101010]"
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Header */}
-        <div className="p-6 border-b border-[#F5DADB] flex justify-between items-center shrink-0 bg-gradient-to-r from-red-50/40 via-white to-red-50/20">
+        <div className="p-6 border-b border-[#E8E5E1] flex justify-between items-center shrink-0 bg-gradient-to-r from-red-50/40 via-white to-red-50/20">
           <div>
-            <h3 className="text-base font-bold text-[#1F1617]">{reuploadVideo ? 'Replace Requested Video' : 'Upload Videos & Documents'}</h3>
-            <p className="text-xs text-red-900/60 mt-0.5">
-              {reuploadVideo ? 'Replace this video using the administrator’s feedback.' : 'Submit up to six videos and attach supporting documents for the hiring team.'}
-            </p>
+            <h3 className="flex items-center gap-2 text-base font-bold text-[#101010]">
+              <Video aria-hidden="true" className="h-5 w-5 text-red-600" />
+              Pharmacist Video Assessment
+            </h3>
+            <p className="text-xs text-red-900/60 mt-0.5">Answer each question with one video. Upload a recording or record your response now.</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-[#6B7280] hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
-          >
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-[#8A8580] hover:text-red-700 hover:bg-red-50 transition-colors">
             <span className="material-symbols-outlined text-lg">close</span>
           </button>
         </div>
 
-        {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
-          {/* Mode Selector */}
-          <div className="flex border border-[#F5DADB] rounded-xl p-1 bg-red-50/30">
-            <button
-              type="button"
-              onClick={() => setActiveMode('upload')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeMode === 'upload'
-                  ? 'bg-white text-red-700 font-bold shadow-xs border border-red-100'
-                  : 'text-[#6B7280] hover:text-[#1F1617]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">upload_file</span>
-              Upload Video Files
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block font-semibold text-[#101010]">
+              Full Name *
+              <input required value={candidateName} onChange={(event) => setCandidateName(event.target.value)} className="mt-1 w-full rounded-lg border border-[#E8E5E1] px-3 py-2 font-normal focus:border-red-500 focus:outline-none" />
+            </label>
+            <label className="block font-semibold text-[#101010]">
+              Email Address *
+              <input type="email" required value={candidateEmail} onChange={(event) => setCandidateEmail(event.target.value)} className="mt-1 w-full rounded-lg border border-[#E8E5E1] px-3 py-2 font-normal focus:border-red-500 focus:outline-none" />
+            </label>
+            <label className="block font-semibold text-[#101010] sm:col-span-2">
+              Role Applied For *
+              <input required value={roleApplied} onChange={(event) => setRoleApplied(event.target.value)} placeholder="e.g. Pharmacist" className="mt-1 w-full rounded-lg border border-[#E8E5E1] px-3 py-2 font-normal focus:border-red-500 focus:outline-none" />
+            </label>
           </div>
 
-          {/* Upload Area */}
-          {activeMode === 'upload' ? (
-            <div className="border-2 border-dashed border-[#F5DADB] hover:border-red-400 rounded-2xl p-6 text-center transition-colors bg-red-50/15 flex flex-col items-center justify-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white border border-[#F5DADB] flex items-center justify-center text-red-600 shadow-xs">
-                <span className="material-symbols-outlined text-2xl">video_camera_front</span>
-              </div>
-              <div>
-                <p className="font-semibold text-xs text-[#1F1617]">
-                  {selectedVideos.length > 0 ? (
-                    <span className="text-red-700 font-bold">
-                      {selectedVideos.length} video{selectedVideos.length === 1 ? '' : 's'} selected
-                    </span>
-                  ) : (
-                    'Choose up to six video files'
-                  )}
-                </p>
-                <p className="text-[11px] text-red-900/60 mt-1">MP4, WebM, or MOV. Maximum 500 MB per video.</p>
-              </div>
-              <label className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-xs shadow-red-500/20">
-                <span className="material-symbols-outlined text-sm">folder_open</span>
-                <span>Select Videos</span>
-                <input
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime"
-                  multiple={!reuploadVideo}
-                  required
-                  onChange={handleVideosChange}
-                  className="hidden"
-                />
-              </label>
-              {selectedVideos.length > 0 && (
-                <ul className="w-full space-y-1 text-left">
-                  {selectedVideos.map((file, index) => (
-                    <li key={`${file.name}-${file.lastModified}`} className="flex items-center justify-between gap-3 text-[11px] text-[#374151]">
-                      <span className="truncate">{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedVideos((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                        className="text-red-700 hover:text-red-900 font-semibold shrink-0"
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : (
-            /* Live Recording Simulator */
-            <div className="border border-red-950/40 rounded-2xl p-4 bg-[#1F1617] text-white flex flex-col gap-3">
-              <div className="relative aspect-video bg-black rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
-                <div className="text-center p-4">
-                  <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3 border border-white/20">
-                    <span className={`material-symbols-outlined text-3xl ${isRecording ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-                      {isRecording ? 'fiber_manual_record' : 'videocam'}
-                    </span>
-                  </div>
-                  <p className="text-xs font-semibold text-gray-200">
-                    {isRecording ? 'Recording Candidate Response...' : hasRecorded ? 'Recording Captured!' : 'Camera & Audio Ready'}
-                  </p>
-                  <p className="font-mono text-sm font-bold text-white mt-1">
-                    {formatTime(recordedSeconds)}
-                  </p>
+          <div className="space-y-3">
+            {questions.map((question, index) => (
+              <section key={question} className="rounded-xl border border-[#E8E5E1] p-4 space-y-3">
+                <div className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-50 text-[11px] font-bold text-red-700">{index + 1}</span>
+                  <h4 className="font-semibold leading-5 text-[#101010]">{question}</h4>
                 </div>
-
-                {isRecording && (
-                  <div className="absolute top-3 left-3 bg-red-600 text-white px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5 animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-white"></span>
-                    <span>LIVE RECORDING</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Prompt Carousel */}
-              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] uppercase font-bold text-gray-400">Interview Prompt Cue</span>
-                  <div className="flex gap-1">
-                    {prompts.map((_, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setActivePromptIndex(idx)}
-                        className={`w-4 h-4 rounded text-[10px] font-bold flex items-center justify-center cursor-pointer ${
-                          activePromptIndex === idx ? 'bg-red-600 text-white' : 'bg-white/10 text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        {idx + 1}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-xs font-medium text-red-200">
-                  {prompts[activePromptIndex]}
-                </p>
-              </div>
-
-              {/* Recorder Controls */}
-              <div className="flex items-center justify-center gap-3 pt-1">
-                {!isRecording ? (
+                <div className="flex gap-2 pl-9">
                   <button
                     type="button"
-                    onClick={handleStartRecord}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer shadow-xs shadow-red-500/20"
+                    onClick={() => {
+                      if (recordingIndex !== null && recordingIndex !== index) handleStopRecording();
+                      if (answerModes[index] !== 'upload') handleRetake(index);
+                      setAnswerModes((modes) => modes.map((current, modeIndex) => modeIndex === index ? 'upload' : current));
+                      setUploadError(null);
+                      uploadInputRefs.current[index]?.click();
+                    }}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-semibold ${answerModes[index] === 'upload' ? 'border-red-600 bg-red-50 text-red-700' : 'border-[#E8E5E1] text-[#8A8580]'}`}
                   >
-                    <span className="material-symbols-outlined text-sm">fiber_manual_record</span>
-                    <span>{hasRecorded ? 'Resume / Record More' : 'Start Recording'}</span>
+                    <Upload aria-hidden="true" className="h-4 w-4" />
+                    Choose video to upload
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (recordingIndex !== null && recordingIndex !== index) handleStopRecording();
+                      if (answerModes[index] !== 'record') handleRetake(index);
+                      setAnswerModes((modes) => modes.map((current, modeIndex) => modeIndex === index ? 'record' : current));
+                      setUploadError(null);
+                    }}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-semibold ${answerModes[index] === 'record' ? 'border-red-600 bg-red-50 text-red-700' : 'border-[#E8E5E1] text-[#8A8580]'}`}
+                  >
+                    <Camera aria-hidden="true" className="h-4 w-4" />
+                    Record video
+                  </button>
+                </div>
+
+                {answerModes[index] === 'upload' ? (
+                  <div className="pl-9 space-y-2">
+                    <input
+                      ref={(element) => { uploadInputRefs.current[index] = element; }}
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      aria-label={`Upload video response for question ${index + 1}`}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] || null;
+                        event.currentTarget.value = '';
+                        replaceAnswer(index, file);
+                        setUploadError(null);
+                      }}
+                      className="sr-only"
+                    />
+                    {answers[index] ? (
+                      <p className="flex items-center gap-2 text-[11px] text-emerald-700">
+                        <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
+                        Ready to upload: {answers[index]?.name}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-[#8A8580]">Choose a video file to add your answer.</p>
+                    )}
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleStopRecord}
-                    className="px-4 py-2 bg-white text-[#1F1617] hover:bg-gray-100 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <span className="material-symbols-outlined text-sm">stop</span>
-                    <span>Stop Recording</span>
-                  </button>
+                  <div className="pl-9 space-y-2">
+                    {recordingIndex === index ? (
+                      <div className="space-y-2">
+                        <video ref={videoPreviewRef} autoPlay muted playsInline className="w-full max-w-md rounded-lg bg-black aspect-video" />
+                        {previewError && <p role="alert" className="max-w-md text-[11px] text-red-700">{previewError}</p>}
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-[#101010]">{formatTime(recordedSeconds[index])}</span>
+                          <button type="button" onClick={handleStopRecording} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white">
+                            <CircleStop aria-hidden="true" className="h-4 w-4" />
+                            Stop recording
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-3">
+                        {previewUrls[index] && <video src={previewUrls[index] || undefined} controls playsInline muted={false} preload="metadata" className="w-full max-w-md rounded-lg bg-black aspect-video" />}
+                        {answers[index] ? (
+                          <button type="button" onClick={() => handleRetake(index)} className="inline-flex items-center gap-2 rounded-lg border border-[#E8E5E1] px-3 py-2 font-semibold text-red-700">
+                            <RotateCcw aria-hidden="true" className="h-4 w-4" />
+                            Record again
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => handleStartRecording(index)} disabled={recordingIndex !== null} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white disabled:opacity-50">
+                            <Camera aria-hidden="true" className="h-4 w-4" />
+                            Start recording
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {answers[index] && recordingIndex !== index && <p className="text-[11px] text-emerald-700">Recording ready to submit.</p>}
+                  </div>
                 )}
-
-                {hasRecorded && !isRecording && (
-                  <button
-                    type="button"
-                    onClick={handleRetake}
-                    className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm">refresh</span>
-                    <span>Retake</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-xl border border-[#F5DADB] p-4 space-y-3">
-            <div>
-              <h4 className="text-xs font-bold text-[#1F1617]">Supporting Documents</h4>
-              <p className="text-[11px] text-[#6B7280] mt-1">PDF, DOC, DOCX, JPG, or PNG. Up to 20 files, 25 MB each.</p>
-            </div>
-            <label className="inline-flex items-center gap-2 px-3 py-2 border border-[#F5DADB] bg-white hover:bg-red-50 rounded-lg text-xs font-semibold cursor-pointer">
-              <span className="material-symbols-outlined text-base">attach_file</span>
-              <span>Select Documents</span>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
-                multiple
-                onChange={handleDocumentsChange}
-                className="hidden"
-              />
-            </label>
-            {selectedDocuments.length > 0 && (
-              <ul className="space-y-1">
-                {selectedDocuments.map((file, index) => (
-                  <li key={`${file.name}-${file.lastModified}`} className="flex items-center justify-between gap-3 text-[11px] text-[#374151]">
-                    <span className="truncate">{file.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                      className="text-red-700 hover:text-red-900 font-semibold shrink-0"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+              </section>
+            ))}
           </div>
 
-          {/* Submission Details Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-[#E8E5E1] p-4 space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-[#1F1617] mb-1">Full Name *</label>
-              <input
-                type="text"
-                required
-                value={candidateName}
-                onChange={(e) => setCandidateName(e.target.value)}
-                className="w-full rounded-lg border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-white"
-              />
+              <h4 className="font-bold text-[#101010]">Supporting Documents (optional)</h4>
+              <p className="text-[11px] text-[#8A8580] mt-1">PDF, DOC, DOCX, JPG, or PNG. Up to 20 files, 25 MB each.</p>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#1F1617] mb-1">Email Address *</label>
-              <input
-                type="email"
-                required
-                value={candidateEmail}
-                onChange={(e) => setCandidateEmail(e.target.value)}
-                className="w-full rounded-lg border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-white"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#1F1617] mb-1">
-                Role Applied For *
-              </label>
-              <input
-                type="text"
-                required
-                value={roleApplied}
-                onChange={(e) => setRoleApplied(e.target.value)}
-                placeholder="e.g. Senior Frontend Engineer"
-                className="w-full rounded-lg border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-white"
-              />
-            </div>
-
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[#1F1617] mb-1">
-              Submission Type
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'self_introduction', label: 'Self Introduction', icon: 'badge' },
-                { id: 'technical_interview', label: 'Technical Screen', icon: 'code' },
-                { id: 'portfolio_walkthrough', label: 'Portfolio Walkthrough', icon: 'laptop_chromebook' },
-              ].map((t) => (
-                <button
-                  type="button"
-                  key={t.id}
-                  onClick={() => setSubmissionType(t.id as any)}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
-                    submissionType === t.id
-                      ? 'border-red-600 bg-red-50/60 font-bold text-red-700 shadow-xs'
-                      : 'border-[#F5DADB] text-[#6B7280] hover:border-red-300 hover:text-[#1F1617]'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-sm">{t.icon}</span>
-                  <span className="text-[11px]">{t.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[#1F1617] mb-1">
-              Notes
-            </label>
-            <textarea
-              rows={3}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Brief summary of your background, career highlights, and what you're looking for in this role..."
-              className="w-full rounded-lg border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-white"
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
+              multiple
+              onChange={handleDocumentsChange}
+              className="block w-full text-[11px] text-[#8A8580]"
             />
+            {selectedDocuments.length > 0 && <p className="text-[11px] text-[#8A8580]">{selectedDocuments.length} document{selectedDocuments.length === 1 ? '' : 's'} selected</p>}
           </div>
 
           {uploadError && <p role="alert" className="text-xs font-semibold text-red-700">{uploadError}</p>}
-
-          {/* Footer Actions */}
-          <div className="pt-2 flex justify-end gap-3 border-t border-[#F5DADB]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-[#F5DADB] hover:bg-red-50 text-[#1F1617] rounded-lg font-semibold transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || selectedVideos.length === 0}
-              className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-all shadow-xs shadow-red-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="material-symbols-outlined text-sm animate-spin">refresh</span>
-                  <span>Uploading Files...</span>
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-sm">send</span>
-                  <span>Submit Video Submission</span>
-                </>
-              )}
+          <div className="pt-2 flex justify-end gap-3 border-t border-[#E8E5E1]">
+            <button type="button" onClick={onClose} className="px-4 py-2 border border-[#E8E5E1] hover:bg-red-50 rounded-lg font-semibold">Cancel</button>
+            <button type="submit" disabled={isSubmitting || answers.some((answer) => !answer) || recordingIndex !== null} className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold disabled:opacity-50">
+              {isSubmitting ? 'Submitting...' : 'Submit all video responses'}
             </button>
           </div>
         </form>

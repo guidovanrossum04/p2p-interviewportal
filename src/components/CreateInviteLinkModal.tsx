@@ -191,15 +191,15 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
       id="create-invite-link-modal"
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
     >
-      <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden border border-[#F5DADB] flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden border border-[#E8E5E1] flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#F5DADB] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
+        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-xs">
               <span className="material-symbols-outlined text-base">link</span>
             </div>
             <div>
-              <h3 className="font-bold text-sm text-[#1F1617]">Create & Share Access Link</h3>
+              <h3 className="font-bold text-sm text-[#101010]">Create & Share Access Link</h3>
               <p className="text-[11px] text-red-900/60">
                 Administrators create candidate upload and Manager / Employer review links.
               </p>
@@ -207,7 +207,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-[#6B7280] hover:text-red-700 p-1 rounded-lg hover:bg-red-50 cursor-pointer"
+            className="text-[#8A8580] hover:text-red-700 p-1 rounded-lg hover:bg-red-50 cursor-pointer"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
@@ -219,7 +219,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Type Selection */}
               <div>
-                <label className="block text-xs font-semibold text-[#1F1617] mb-2">
+                <label className="block text-xs font-semibold text-[#101010] mb-2">
                   Select Link Destination / Recipient Type *
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -232,12 +232,12 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
                       type === 'candidate'
                         ? 'border-red-600 bg-red-50/60 font-bold text-red-700 shadow-xs'
-                        : 'border-[#F5DADB] text-[#6B7280] hover:border-red-300'
+                        : 'border-[#E8E5E1] text-[#8A8580] hover:border-red-300'
                     }`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-base text-red-600">video_camera_front</span>
-                      <span className="text-xs font-bold text-[#1F1617]">Candidate Upload Link</span>
+                      <span className="text-xs font-bold text-[#101010]">Candidate Upload Link</span>
                     </div>
                     <span className="text-[11px] font-normal text-red-900/70">Share with a candidate to submit their video.</span>
                   </button>
@@ -251,12 +251,12 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
                       type === 'evaluator'
                         ? 'border-red-600 bg-red-50/60 font-bold text-red-700 shadow-xs'
-                        : 'border-[#F5DADB] text-[#6B7280] hover:border-red-300'
+                        : 'border-[#E8E5E1] text-[#8A8580] hover:border-red-300'
                     }`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-base text-red-600">rate_review</span>
-                      <span className="text-xs font-bold text-[#1F1617]">Employer / Manager Review Link</span>
+                      <span className="text-xs font-bold text-[#101010]">Employer / Manager Review Link</span>
                     </div>
                     <span className="text-[11px] font-normal text-red-900/70">
                       Share with an employer or manager to review assigned candidate submissions.
@@ -268,7 +268,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
               {/* Conditional Quick Selector for Evaluator */}
               {type === 'evaluator' && (
                 <div className="relative">
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1" htmlFor="registered-evaluator-search">Search registered Managers / Employers</label>
+                  <label className="block text-xs font-semibold text-[#101010] mb-1" htmlFor="registered-evaluator-search">Search registered Managers / Employers</label>
                   <input
                     id="registered-evaluator-search"
                     type="search"
@@ -282,10 +282,10 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                       setRecipientEmail('');
                     }}
                     placeholder="Search by name or email"
-                    className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                   />
                   {isEvaluatorSearchFocused && evaluatorSearch.trim() && (
-                    <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[#F5DADB] bg-white shadow-lg">
+                    <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[#E8E5E1] bg-white shadow-lg">
                       {filteredEvaluators.length ? filteredEvaluators.map((evaluator) => (
                         <button
                           key={evaluator.id}
@@ -294,11 +294,11 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                           onClick={() => handleEvaluatorSelect(evaluator.id)}
                           className="block w-full border-b border-red-50 px-3 py-2.5 text-left last:border-0 hover:bg-red-50"
                         >
-                          <span className="block text-xs font-semibold text-[#1F1617]">{evaluator.name}</span>
-                          <span className="mt-0.5 block text-[11px] text-[#6B7280]">{evaluator.email}</span>
+                          <span className="block text-xs font-semibold text-[#101010]">{evaluator.name}</span>
+                          <span className="mt-0.5 block text-[11px] text-[#8A8580]">{evaluator.email}</span>
                         </button>
                       )) : (
-                        <p className="px-3 py-3 text-xs text-[#6B7280]">No registered Manager / Employer matches. You can enter new recipient details below.</p>
+                        <p className="px-3 py-3 text-xs text-[#8A8580]">No registered Manager / Employer matches. You can enter new recipient details below.</p>
                       )}
                     </div>
                   )}
@@ -310,7 +310,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
 
               {type === 'candidate' && (
                 <div className="relative">
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1" htmlFor="candidate-directory-search">Search existing candidate</label>
+                  <label className="block text-xs font-semibold text-[#101010] mb-1" htmlFor="candidate-directory-search">Search existing candidate</label>
                   <input
                     id="candidate-directory-search"
                     type="search"
@@ -322,12 +322,12 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                       setRecipientEmail('');
                     }}
                     placeholder="Search by candidate name or email"
-                    className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                   />
                   {candidateSearch.trim().length >= 2 && (
-                    <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[#F5DADB] bg-white shadow-lg">
+                    <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[#E8E5E1] bg-white shadow-lg">
                       {isSearchingCandidates ? (
-                        <p className="px-3 py-3 text-xs text-[#6B7280]">Searching candidates...</p>
+                        <p className="px-3 py-3 text-xs text-[#8A8580]">Searching candidates...</p>
                       ) : candidateSearchError ? (
                         <p role="alert" className="px-3 py-3 text-xs text-red-700">{candidateSearchError}</p>
                       ) : candidateResults.length ? (
@@ -338,12 +338,12 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                             onClick={() => handleCandidateSelect(candidate)}
                             className="block w-full border-b border-red-50 px-3 py-2.5 text-left last:border-0 hover:bg-red-50"
                           >
-                            <span className="block text-xs font-semibold text-[#1F1617]">{candidate.name}</span>
-                            <span className="mt-0.5 block text-[11px] text-[#6B7280]">{candidate.email}</span>
+                            <span className="block text-xs font-semibold text-[#101010]">{candidate.name}</span>
+                            <span className="mt-0.5 block text-[11px] text-[#8A8580]">{candidate.email}</span>
                           </button>
                         ))
                       ) : (
-                        <p className="px-3 py-3 text-xs text-[#6B7280]">No existing candidates found. You can enter new candidate details below.</p>
+                        <p className="px-3 py-3 text-xs text-[#8A8580]">No existing candidates found. You can enter new candidate details below.</p>
                       )}
                     </div>
                   )}
@@ -353,7 +353,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
               {/* Recipient Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1">
+                  <label className="block text-xs font-semibold text-[#101010] mb-1">
                     {type === 'candidate' ? 'Candidate Full Name *' : 'Manager / Employer Name *'}
                   </label>
                   <input
@@ -362,12 +362,12 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     placeholder={type === 'candidate' ? 'Enter candidate name' : 'Enter employer or manager name'}
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
-                    className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1">
+                  <label className="block text-xs font-semibold text-[#101010] mb-1">
                     Recipient Email Address
                   </label>
                   <input
@@ -376,14 +376,14 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     placeholder="recipient@example.com"
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
-                    className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                   />
                 </div>
               </div>
 
               {/* Target Position */}
               <div>
-                <label className="block text-xs font-semibold text-[#1F1617] mb-1">
+                <label className="block text-xs font-semibold text-[#101010] mb-1">
                   {type === 'candidate' ? 'Target Position *' : 'Role / Focus *'}
                 </label>
                 <input
@@ -392,14 +392,14 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                   placeholder="e.g. Senior Frontend Engineer"
                   value={roleApplied}
                   onChange={(e) => setRoleApplied(e.target.value)}
-                  className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                  className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                 />
               </div>
 
               {/* Evaluator Assignment Target Video */}
               {type === 'evaluator' && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#1F1617] mb-1">
+                  <label className="block text-xs font-semibold text-[#101010] mb-1">
                     Approved Candidate Submission *
                   </label>
                   {isLoadingAssignableVideos ? (
@@ -416,7 +416,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     disabled={isLoadingAssignableVideos || Boolean(assignableVideosError) || assignableVideos.length === 0}
                     value={assignedVideoId}
                     onChange={(e) => setAssignedVideoId(e.target.value)}
-                    className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white cursor-pointer"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="">-- Select a submitted video --</option>
                     {assignableSubmissions.map(({ id, videos: submissionVideos }) => {
@@ -431,13 +431,13 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 </div>
               )}
 
-              <p className="rounded-xl border border-[#F5DADB] bg-red-50/30 p-3 text-xs text-[#374151]">
+              <p className="rounded-xl border border-[#E8E5E1] bg-red-50/30 p-3 text-xs text-[#5A5550]">
                 The secure link will be emailed automatically to {type === 'candidate' ? 'the candidate' : 'the selected Manager / Employer'}.
               </p>
 
               {/* Expiry Date */}
               <div>
-                <label className="block text-xs font-semibold text-[#1F1617] mb-1" htmlFor="invite-expiry">Link Expiry Date & Time *</label>
+                <label className="block text-xs font-semibold text-[#101010] mb-1" htmlFor="invite-expiry">Link Expiry Date & Time *</label>
                 <input
                   id="invite-expiry"
                   type="datetime-local"
@@ -445,13 +445,13 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                   min={toDateTimeLocalValue(new Date(Date.now() + 60 * 1000))}
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
-                  className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                  className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                 />
               </div>
 
               {/* Internal Notes */}
               <div>
-                <label className="block text-xs font-semibold text-[#1F1617] mb-1">
+                <label className="block text-xs font-semibold text-[#101010] mb-1">
                   Invitation Instructions / Notes (Optional)
                 </label>
                 <textarea
@@ -459,17 +459,17 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. Please record 2-3 minute introduction focusing on architecture and leadership..."
-                  className="w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-xs text-[#1F1617] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                  className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                 />
               </div>
 
               {/* Submit Button */}
               {errorMessage && <p role="alert" className="text-xs font-semibold text-red-700">{errorMessage}</p>}
-              <div className="flex justify-end gap-3 pt-2 border-t border-[#F5DADB]">
+              <div className="flex justify-end gap-3 pt-2 border-t border-[#E8E5E1]">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-[#F5DADB] hover:bg-red-50 text-[#1F1617] rounded-xl font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-2 border border-[#E8E5E1] hover:bg-red-50 text-[#101010] rounded-xl font-semibold transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -490,18 +490,18 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center mx-auto shadow-md shadow-red-500/25">
                   <span className="material-symbols-outlined text-2xl">check</span>
                 </div>
-                <h4 className="font-extrabold text-sm text-[#1F1617]">
+                <h4 className="font-extrabold text-sm text-[#101010]">
                   {createdInvite.type === 'candidate' ? 'Candidate Upload Link Ready' : 'Manager / Employer Review Link Ready'}
                 </h4>
                 <p className="text-xs text-red-900/70 max-w-md mx-auto">
                   Share this private link with{' '}
-                  <strong className="text-[#1F1617]">{createdInvite.recipientName}</strong>. Only individuals with this
+                  <strong className="text-[#101010]">{createdInvite.recipientName}</strong>. Only individuals with this
                   token can access the {createdInvite.type === 'candidate' ? 'upload screen' : 'evaluation queue'}.
                 </p>
               </div>
 
               {/* Link Details Card */}
-              <div className="bg-[#FAF4F4] p-4 rounded-2xl border border-[#F5DADB] space-y-3">
+              <div className="bg-[#F5F2EE] p-4 rounded-2xl border border-[#E8E5E1] space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-red-900/60 uppercase text-[10px]">Access Token</span>
                   <span className="font-mono font-extrabold text-red-700 px-2 py-0.5 bg-white rounded border border-red-200">
@@ -511,14 +511,14 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
 
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-red-900/60 uppercase text-[10px]">Recipient</span>
-                  <span className="font-semibold text-[#1F1617]">
+                  <span className="font-semibold text-[#101010]">
                     {createdInvite.recipientName} ({createdInvite.recipientEmail || 'Direct link'})
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-red-900/60 uppercase text-[10px]">Valid Until</span>
-                  <span className="text-[#1F1617]">
+                  <span className="text-[#101010]">
                     {new Date(createdInvite.expiresAt).toLocaleDateString()} at{' '}
                     {new Date(createdInvite.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
@@ -534,7 +534,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                       type="text"
                       readOnly
                       value={getFullUrl(createdInvite.token, createdInvite.type)}
-                      className="flex-1 rounded-xl border border-[#F5DADB] bg-white px-3 py-2 text-xs font-mono text-[#1F1617] select-all focus:outline-none"
+                      className="flex-1 rounded-xl border border-[#E8E5E1] bg-white px-3 py-2 text-xs font-mono text-[#101010] select-all focus:outline-none"
                     />
                     <button
                       type="button"
@@ -559,7 +559,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
               </div>
 
               {/* Action Buttons & Share via WhatsApp / Email */}
-              <div className="space-y-3 pt-2 border-t border-[#F5DADB]">
+              <div className="space-y-3 pt-2 border-t border-[#E8E5E1]">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] font-bold text-red-900/60 uppercase">Share Directly:</span>
                   

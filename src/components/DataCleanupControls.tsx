@@ -89,14 +89,14 @@ export const DataCleanupControls: React.FC<DataCleanupControlsProps> = ({ onComp
     <section className="space-y-4 rounded-2xl border border-red-200 bg-white p-6 shadow-xs">
       <div>
         <h3 className="text-sm font-bold text-red-800">Data Cleanup</h3>
-        <p className="mt-1 text-xs text-[#6B7280]">These actions affect all records in the selected category and cannot be undone.</p>
+        <p className="mt-1 text-xs text-[#8A8580]">These actions affect all records in the selected category and cannot be undone.</p>
       </div>
       {notice && <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{notice}</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         {cleanupActions.map((action) => (
-          <div key={action.resource} className="rounded-xl border border-[#F5DADB] p-4">
-            <h4 className="text-xs font-bold text-[#1F1617]">{action.title}</h4>
-            <p className="mt-1 min-h-8 text-[11px] text-[#6B7280]">{action.description}</p>
+          <div key={action.resource} className="rounded-xl border border-[#E8E5E1] p-4">
+            <h4 className="text-xs font-bold text-[#101010]">{action.title}</h4>
+            <p className="mt-1 min-h-8 text-[11px] text-[#8A8580]">{action.description}</p>
             <button
               type="button"
               onClick={() => {
@@ -116,22 +116,22 @@ export const DataCleanupControls: React.FC<DataCleanupControlsProps> = ({ onComp
           <form onSubmit={runCleanup} className="w-full max-w-lg space-y-4 rounded-2xl border border-red-200 bg-white p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="cleanup-dialog-title">
             <div>
               <h3 id="cleanup-dialog-title" className="text-base font-bold text-red-800">{selectedAction.title}?</h3>
-              <p className="mt-2 text-xs leading-relaxed text-[#4B5563]">{selectedAction.details}</p>
+              <p className="mt-2 text-xs leading-relaxed text-[#5A5550]">{selectedAction.details}</p>
               <p className="mt-2 text-xs font-bold text-red-700">This applies to all records in this category, not only the current page.</p>
             </div>
-            <label className="block text-xs font-semibold text-[#1F1617]">
+            <label className="block text-xs font-semibold text-[#101010]">
               Type DELETE to confirm
               <input
                 type="text"
                 required
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-[#F5DADB] px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                className="mt-1 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
               />
             </label>
             {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={closeDialog} disabled={isCleaning} className="rounded-xl border border-[#F5DADB] px-4 py-2 text-xs font-semibold text-[#6B7280] disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={closeDialog} disabled={isCleaning} className="rounded-xl border border-[#E8E5E1] px-4 py-2 text-xs font-semibold text-[#8A8580] disabled:opacity-50">Cancel</button>
               <button type="submit" disabled={isCleaning || confirmation !== 'DELETE'} className="rounded-xl bg-red-700 px-4 py-2 text-xs font-bold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50">
                 {isCleaning ? 'Cleaning...' : 'Confirm cleanup'}
               </button>

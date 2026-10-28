@@ -1,10 +1,8 @@
 import nodemailer from 'nodemailer';
-import path from 'node:path';
 import { CandidateVideo, InviteLink, SystemSettings } from '../../types';
 import { PortalRepository } from '../repositories/PortalRepository';
 
 const ADMIN_EMAILS = ['ivornorth@p2precruitment.com.au', 'developersp2pr@gmail.com'];
-const LOGO_CID = 'p2p-recruitment-logo';
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
   '&': '&amp;',
@@ -34,25 +32,19 @@ export class EmailService {
       to,
       subject,
       html: this.emailLayout(html),
-      attachments: [{
-        filename: 'p2plogo.webp',
-        path: path.resolve(process.cwd(), 'assets', 'p2plogo.webp'),
-        cid: LOGO_CID,
-      }],
     });
   }
 
   private emailLayout(content: string): string {
     return `<!doctype html>
-      <html><body style="margin:0;padding:24px;background:#faf4f4;font-family:Arial,Helvetica,sans-serif;color:#1f1617">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #f5dadb;border-radius:16px;overflow:hidden">
-          <tr><td style="padding:22px 28px;background:#7f1d1d;color:#fff">
-            <img src="cid:${LOGO_CID}" alt="P2P Recruitment" width="56" height="56" style="display:block;width:56px;height:56px;object-fit:contain;margin-bottom:10px">
+      <html><body style="margin:0;padding:24px;background:#F5F2EE;font-family:Archivo,Arial,Helvetica,sans-serif;color:#101010">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #E8E5E1;border-radius:16px;overflow:hidden">
+          <tr><td style="padding:22px 28px;background:#D81F27;color:#fff">
             <div style="font-size:20px;font-weight:700">P2P Recruitment</div>
-            <div style="font-size:12px;color:#fee2e2;margin-top:4px">Candidate interview and evaluation portal</div>
+            <div style="font-size:12px;color:#FFE4E6;margin-top:4px">Candidate interview and evaluation portal</div>
           </td></tr>
           <tr><td style="padding:28px;line-height:1.6;font-size:14px">${content}</td></tr>
-          <tr><td style="padding:16px 28px;background:#fff7f7;border-top:1px solid #f5dadb;color:#7f1d1d;font-size:11px">
+          <tr><td style="padding:16px 28px;background:#FFF1F2;border-top:1px solid #E8E5E1;color:#5A5550;font-size:11px">
             This is an automated message from P2P Recruitment. Please do not reply directly to this email.
           </td></tr>
         </table>
@@ -60,7 +52,7 @@ export class EmailService {
   }
 
   private actionButton(url: string, label: string): string {
-    return `<p style="margin:24px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#b4232d;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">${escapeHtml(label)}</a></p>`;
+    return `<p style="margin:24px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#D81F27;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">${escapeHtml(label)}</a></p>`;
   }
 
   async sendInvite(invite: InviteLink, linkUrl: string): Promise<void> {
@@ -72,12 +64,12 @@ export class EmailService {
     const subject = candidateInvite ? `Video submission link: ${invite.roleApplied || 'Candidate role'}` : `Candidate review assignment: ${invite.roleApplied || 'Review'}`;
 
     await this.send(invite.recipientEmail, subject, `
-      <h1 style="font-size:22px;color:#7f1d1d;margin:0 0 16px">You have a secure invitation</h1>
+      <h1 style="font-size:22px;color:#101010;margin:0 0 16px">You have a secure invitation</h1>
       <p>Hello ${recipientName},</p>
       <p>You have been invited to ${action} for <strong>${position}</strong>.</p>
       ${this.actionButton(linkUrl, candidateInvite ? 'Open upload portal' : 'Open review assignment')}
-      <p style="font-size:12px;color:#6b7280">This secure link expires at ${escapeHtml(new Date(invite.expiresAt).toLocaleString())}.</p>
-      <p style="font-size:12px;color:#6b7280;word-break:break-all">If the button does not work, copy this link:<br>${safeUrl}</p>
+      <p style="font-size:12px;color:#8A8580">This secure link expires at ${escapeHtml(new Date(invite.expiresAt).toLocaleString())}.</p>
+      <p style="font-size:12px;color:#8A8580;word-break:break-all">If the button does not work, copy this link:<br>${safeUrl}</p>
       <p>If you were not expecting this message, you can ignore it.</p>
     `);
   }
@@ -86,11 +78,11 @@ export class EmailService {
     const safeName = escapeHtml(invite.recipientName);
     const safeUrl = escapeHtml(linkUrl);
     await this.send(invite.recipientEmail, 'Your P2P Recruitment link expiry was updated', `
-      <h1 style="font-size:22px;color:#7f1d1d;margin:0 0 16px">Your link expiry was extended</h1>
+      <h1 style="font-size:22px;color:#101010;margin:0 0 16px">Your link expiry was extended</h1>
       <p>Hello ${safeName},</p>
       <p>Your secure link is now valid until <strong>${escapeHtml(new Date(invite.expiresAt).toLocaleString())}</strong>.</p>
       ${this.actionButton(linkUrl, 'Open your secure link')}
-      <p style="font-size:12px;color:#6b7280;word-break:break-all">${safeUrl}</p>
+      <p style="font-size:12px;color:#8A8580;word-break:break-all">${safeUrl}</p>
     `);
   }
 
@@ -101,10 +93,10 @@ export class EmailService {
     await this.send(
       video.candidateEmail,
       approved ? 'Your video submission was approved' : 'A video reupload is requested',
-      `<h1 style="font-size:22px;color:#7f1d1d;margin:0 0 16px">${approved ? 'Your submission was approved' : 'A replacement video is requested'}</h1>
+      `<h1 style="font-size:22px;color:#101010;margin:0 0 16px">${approved ? 'Your submission was approved' : 'A replacement video is requested'}</h1>
         <p>Hello ${recipientName},</p>
         <p>${approved ? 'Your video submission has been approved.' : 'Please reupload the requested video using your existing candidate upload link.'}</p>
-        <div style="margin-top:18px;padding:14px;background:#fff7f7;border-left:4px solid #b4232d;border-radius:6px"><strong>Admin feedback</strong><br>${safeFeedback.replace(/\n/g, '<br>')}</div>`,
+        <div style="margin-top:18px;padding:14px;background:#F5F2EE;border-left:4px solid #D81F27;border-radius:6px"><strong>Admin feedback</strong><br>${safeFeedback.replace(/\n/g, '<br>')}</div>`,
     );
   }
 
@@ -112,7 +104,7 @@ export class EmailService {
     const name = escapeHtml(video.candidateName);
     const role = escapeHtml(video.roleApplied || 'your application');
     await this.send(video.candidateEmail, 'We received your P2P Recruitment submission', `
-      <h1 style="font-size:22px;color:#7f1d1d;margin:0 0 16px">Submission received</h1>
+      <h1 style="font-size:22px;color:#101010;margin:0 0 16px">Submission received</h1>
       <p>Hello ${name},</p>
       <p>Your upload for <strong>${role}</strong> was received successfully. We received ${videoCount} video${videoCount === 1 ? '' : 's'} and your submission is now queued for review.</p>
       <p>We’ll email you if the hiring team needs any changes or when there is an update.</p>
@@ -124,7 +116,7 @@ export class EmailService {
     const email = escapeHtml(video.candidateEmail);
     const role = escapeHtml(video.roleApplied || 'Not specified');
     await this.send(ADMIN_EMAILS.join(', '), `New candidate submission: ${video.candidateName}`, `
-      <h1 style="font-size:22px;color:#7f1d1d;margin:0 0 16px">New candidate submission</h1>
+      <h1 style="font-size:22px;color:#101010;margin:0 0 16px">New candidate submission</h1>
       <p><strong>${name}</strong> (${email}) submitted ${videoCount} video${videoCount === 1 ? '' : 's'} for <strong>${role}</strong>.</p>
       ${this.actionButton(portalUrl, 'Open admin portal')}
     `);
@@ -135,7 +127,7 @@ export class EmailService {
     const email = escapeHtml(video.candidateEmail);
     const role = escapeHtml(video.roleApplied || 'Not specified');
     await this.send(ADMIN_EMAILS.join(', '), `Candidate reupload received: ${video.candidateName}`, `
-      <h1 style="font-size:22px;color:#7f1d1d;margin:0 0 16px">Candidate reupload received</h1>
+      <h1 style="font-size:22px;color:#101010;margin:0 0 16px">Candidate reupload received</h1>
       <p><strong>${name}</strong> (${email}) submitted a replacement video for <strong>${role}</strong>.</p>
       ${this.actionButton(portalUrl, 'Open admin portal')}
     `);
@@ -148,10 +140,10 @@ export class EmailService {
     const decision = escapeHtml(video.evaluation?.decision || 'submitted');
     const notes = escapeHtml(video.evaluation?.notes || '');
     await this.send(ADMIN_EMAILS.join(', '), `Manager / Employer evaluation completed: ${video.candidateName}`, `
-      <h1 style="font-size:22px;color:#7f1d1d;margin:0 0 16px">Evaluation completed</h1>
+      <h1 style="font-size:22px;color:#101010;margin:0 0 16px">Evaluation completed</h1>
       <p>${evaluator} completed the evaluation for <strong>${name}</strong> — ${role}.</p>
       <p><strong>Decision:</strong> ${decision}${video.evaluation?.overallScore !== undefined ? ` · <strong>Score:</strong> ${video.evaluation.overallScore}%` : ''}</p>
-      ${notes ? `<div style="margin-top:18px;padding:14px;background:#fff7f7;border-left:4px solid #b4232d;border-radius:6px"><strong>Evaluation notes</strong><br>${notes.replace(/\n/g, '<br>')}</div>` : ''}
+      ${notes ? `<div style="margin-top:18px;padding:14px;background:#F5F2EE;border-left:4px solid #D81F27;border-radius:6px"><strong>Evaluation notes</strong><br>${notes.replace(/\n/g, '<br>')}</div>` : ''}
       ${this.actionButton(portalUrl, 'Open admin portal')}
     `);
   }
@@ -170,12 +162,7 @@ export class EmailService {
       from: { name: settings.smtpFromName || 'P2P Recruitment', address: settings.smtpFromAddress },
       to: recipient,
       subject: 'P2P Recruitment SMTP test',
-      html: this.emailLayout('<h1 style="font-size:22px;color:#7f1d1d">SMTP test successful</h1><p>HTML email branding and SMTP delivery are configured correctly.</p>'),
-      attachments: [{
-        filename: 'p2plogo.webp',
-        path: path.resolve(process.cwd(), 'assets', 'p2plogo.webp'),
-        cid: LOGO_CID,
-      }],
+      html: this.emailLayout('<h1 style="font-size:22px;color:#101010">SMTP test successful</h1><p>HTML email branding and SMTP delivery are configured correctly.</p>'),
     });
   }
 }

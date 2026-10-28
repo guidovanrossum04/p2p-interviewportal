@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DashboardStats, CandidateVideo } from '../types';
-import { getSubmissionId, groupVideosBySubmission } from '../utils/submissions';
+import { groupVideosBySubmission } from '../utils/submissions';
 
 interface ReportModalProps {
   stats: DashboardStats;
@@ -15,9 +15,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({ stats, videos, onClose
   const submissions = groupVideosBySubmission(videos);
 
   const downloadCSV = () => {
-    const headers = ['Submission ID', 'Candidate Video ID', 'Candidate Name', 'Role Applied', 'Department', 'Status', 'Overall Score', 'Decision', 'Manager / Employer'];
+    const headers = ['Candidate Video ID', 'Candidate Name', 'Role Applied', 'Department', 'Status', 'Overall Score', 'Decision', 'Manager / Employer'];
     const rows = videos.map((v) => [
-      getSubmissionId(v),
       v.id,
       `"${v.candidateName}"`,
       `"${v.roleApplied}"`,
@@ -54,13 +53,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({ stats, videos, onClose
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden border border-[#F5DADB] animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-[#F5DADB] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden border border-[#E8E5E1] animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-red-600 text-xl">assessment</span>
-            <h3 className="font-bold text-sm text-[#1F1617]">HR Talent Analytics & SLA Report</h3>
+            <h3 className="font-bold text-sm text-[#101010]">HR Talent Analytics & SLA Report</h3>
           </div>
-          <button onClick={onClose} className="text-[#6B7280] hover:text-red-700 cursor-pointer">
+          <button onClick={onClose} className="text-[#8A8580] hover:text-red-700 cursor-pointer">
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
@@ -68,21 +67,21 @@ export const ReportModal: React.FC<ReportModalProps> = ({ stats, videos, onClose
         <div className="p-6 space-y-6">
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-white border border-[#F5DADB] shadow-xs">
+            <div className="p-4 rounded-2xl bg-white border border-[#E8E5E1] shadow-xs">
               <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider">SLA Compliance</span>
-              <div className="text-2xl font-bold text-[#1F1617] mt-1">{stats.slaCompliance}%</div>
+              <div className="text-2xl font-bold text-[#101010] mt-1">{stats.slaCompliance}%</div>
               <span className="text-[10px] text-red-700 font-medium">92% within 24hr target</span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-[#F5DADB] shadow-xs">
+            <div className="p-4 rounded-2xl bg-white border border-[#E8E5E1] shadow-xs">
               <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider">Average Turnaround</span>
-              <div className="text-2xl font-bold text-[#1F1617] mt-1">{stats.avgCompletionTime}</div>
+              <div className="text-2xl font-bold text-[#101010] mt-1">{stats.avgCompletionTime}</div>
               <span className="text-[10px] text-red-900/60">Median completion window</span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-[#F5DADB] shadow-xs">
+            <div className="p-4 rounded-2xl bg-white border border-[#E8E5E1] shadow-xs">
               <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider">Manager / Employer Coverage</span>
-              <div className="text-2xl font-bold text-[#1F1617] mt-1">
+              <div className="text-2xl font-bold text-[#101010] mt-1">
                 {stats.activeEvaluatorsCount}/{stats.totalEvaluatorsCount}
               </div>
               <span className="text-[10px] text-amber-700 font-medium">80.5% active this week</span>
@@ -90,16 +89,16 @@ export const ReportModal: React.FC<ReportModalProps> = ({ stats, videos, onClose
           </div>
 
           {/* Department Breakdown */}
-          <div className="border border-[#F5DADB] rounded-2xl p-4 bg-white shadow-xs">
-            <h4 className="font-semibold text-xs text-[#1F1617] mb-3">Live Video Queue Breakdown</h4>
+          <div className="border border-[#E8E5E1] rounded-2xl p-4 bg-white shadow-xs">
+            <h4 className="font-semibold text-xs text-[#101010] mb-3">Live Video Queue Breakdown</h4>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between items-center py-1 border-b border-red-50">
                 <span className="text-red-900/70">Total Ingested Recordings in Database</span>
-                <span className="font-bold text-[#1F1617]">{videos.length} videos</span>
+                <span className="font-bold text-[#101010]">{videos.length} videos</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-red-50">
                 <span className="text-red-900/70">Grouped Submissions</span>
-                <span className="font-bold text-[#1F1617]">{submissions.length} submissions</span>
+                <span className="font-bold text-[#101010]">{submissions.length} submissions</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-red-50">
                 <span className="text-red-900/70">Pending Review by Assigned Managers / Employers</span>
@@ -113,10 +112,10 @@ export const ReportModal: React.FC<ReportModalProps> = ({ stats, videos, onClose
           </div>
 
           {/* Export Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#F5DADB]">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#E8E5E1]">
             <button
               onClick={copySummary}
-              className="px-4 py-2 rounded-lg text-xs font-semibold border border-[#F5DADB] text-[#1F1617] hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-lg text-xs font-semibold border border-[#E8E5E1] text-[#101010] hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm">{copied ? 'done' : 'content_copy'}</span>
               {copied ? 'Summary Copied!' : 'Copy Executive Briefing'}
@@ -125,7 +124,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({ stats, videos, onClose
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-[#6B7280] hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-[#8A8580] hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
               >
                 Close
               </button>
