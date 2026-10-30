@@ -98,6 +98,17 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
     && video.adminReviewStatus === 'reupload_requested'
   );
   const activeUploadLink = uploadLinks.find((link) => link.token === linkToken) || uploadLinks[0];
+  const invitationNote = activeUploadLink?.notes?.trim() || '';
+  const invitationLines = invitationNote.split(/\r?\n/);
+  const invitationSubjectLine = invitationLines[0]?.match(/^Subject Line:\s*(.+)$/i);
+  const invitationSubject = invitationSubjectLine?.[1]?.trim();
+  const invitationContentLines = (invitationSubjectLine ? invitationLines.slice(1) : invitationLines)
+    .filter((line, index, lines) => line.trim() || (index > 0 && index < lines.length - 1));
+  const signoffIndex = invitationContentLines.findIndex((line) => line.trim().toLowerCase() === 'kind regards');
+  const invitationMessage = (signoffIndex >= 0 ? invitationContentLines.slice(0, signoffIndex) : invitationContentLines).join('\n').trim();
+  const invitationSignoff = signoffIndex >= 0
+    ? invitationContentLines.slice(signoffIndex).filter((line) => line.trim())
+    : [];
   const currentUploads = videos.filter((video) =>
     video.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()
   );
@@ -114,6 +125,37 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
       <header className="bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs">
         <h2 className="text-2xl font-extrabold text-[#101010]">Welcome, {currentUser.name}</h2>
         <p className="text-xs text-red-900/60 mt-1">Use your active invitation to upload the requested video responses.</p>
+        {invitationNote && (
+          <section aria-label="Invitation message" className="mt-5 overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
+            <div className="flex items-center gap-3 border-b border-[#E8E5E1] bg-[#F5F2EE] px-4 py-3">
+              <img src={p2pLogo} alt="P2P Recruitment" className="h-10 w-auto object-contain" />
+              <div className="text-[10px] text-[#5A5550]">
+                <p><strong>From:</strong> P2P Recruitment</p>
+                <p><strong>To:</strong> {activeUploadLink?.recipientEmail || currentUser.email}</p>
+              </div>
+            </div>
+            {invitationSubject && (
+              <div className="border-b border-[#E8E5E1] px-4 py-3 text-xs">
+                <span className="font-bold text-[#5A5550]">Subject: </span>
+                <span className="font-semibold text-[#101010]">{invitationSubject}</span>
+              </div>
+            )}
+            <div className="px-4 py-4 text-xs leading-6 text-[#101010]">
+              <p className="whitespace-pre-line">{invitationMessage}</p>
+              {invitationSignoff.length > 0 && (
+                <div className="mt-5 border-l-2 border-red-600 pl-3 leading-5">
+                  {invitationSignoff.map((line, index) => (
+                    <p key={`${index}-${line}`} className={index === invitationSignoff.length - 1
+                      ? 'mt-1 italic text-[#5A5550]'
+                      : index === 2 ? 'font-bold text-[#101010]' : 'text-[#101010]'}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </header>
 
       {currentUploads.length > 0 && (

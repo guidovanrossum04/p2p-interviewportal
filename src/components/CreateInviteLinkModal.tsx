@@ -18,6 +18,28 @@ const candidateQuestions = [
   'The role as a pharmacist requires you to lead and manage your team. Describe to me how you will lead and manage your team effectively?',
 ];
 
+const candidateInvitationTemplate = `Subject Line: P2P: Your Next Steps for our Overseas Pharmacist Position
+
+Thank you for commencing the application process for our Overseas Pharmacist position.
+
+We invite you to the next step, which is an online video interview. This will help you stand out when we present you to potential employers and hiring managers.
+
+You can complete this interview using a computer or laptop with a webcam and microphone or from an iPhone, iPad or Android mobile device. If you use a mobile phone or iPad you will need to lock your screen to ensure the image does not flip after recording.
+
+Please click the link provided in this email from the device you would like to use to record your interview when you are ready. Please read the video interview tips before commencing the process.
+
+Kind regards
+
+Ivor North
+
+P2P Recruitment
+
+“Connecting professionals 2 professionals”`;
+const candidateInvitationLines = candidateInvitationTemplate.split('\n');
+const candidateSignoffIndex = candidateInvitationLines.findIndex((line) => line.trim() === 'Kind regards');
+const candidateInvitationBody = candidateInvitationLines.slice(2, candidateSignoffIndex).join('\n').trim();
+const candidateInvitationSignoff = candidateInvitationLines.slice(candidateSignoffIndex).filter((line) => line.trim());
+
 interface CreateInviteLinkModalProps {
   evaluators: User[];
   defaultType?: InviteType;
@@ -67,7 +89,9 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
   const selectedQuestionPrompts = selectedQuestionIndexes.map((index) => candidateQuestions[index]).filter(Boolean);
   const derivedVideoCount = selectedQuestionPrompts.length || 1;
   const [expiresAt, setExpiresAt] = useState(() => toDateTimeLocalValue(new Date(Date.now() + 48 * 60 * 60 * 1000)));
-  const [notes, setNotes] = useState('');
+  const [candidateNotes, setCandidateNotes] = useState(candidateInvitationTemplate);
+  const [evaluatorNotes, setEvaluatorNotes] = useState('');
+  const notes = type === 'candidate' ? candidateNotes : evaluatorNotes;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -635,16 +659,48 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
 
               {/* Internal Notes */}
               <div>
-                <label className="block text-xs font-semibold text-[#101010] mb-1">
-                  Invitation Instructions / Notes (Optional)
+                <label htmlFor={type === 'candidate' ? undefined : 'invite-notes'} className="block text-xs font-semibold text-[#101010] mb-1">
+                  {type === 'candidate' ? 'Candidate Invitation Email Preview' : 'Invitation Instructions / Notes (Optional)'}
                 </label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Please record 2-3 minute introduction focusing on architecture and leadership..."
-                  className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
-                />
+                {type === 'candidate' && (
+                  <div className="overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
+                    <div className="flex items-center gap-3 border-b border-[#E8E5E1] bg-[#F5F2EE] px-4 py-3">
+                      <img src={p2pLogo} alt="P2P Recruitment" className="h-10 w-auto object-contain" />
+                      <div className="text-[10px] text-[#5A5550]">
+                        <p><strong>To:</strong> {recipientEmail || 'Candidate'}</p>
+                        <p><strong>From:</strong> P2P Recruitment</p>
+                      </div>
+                      <span className="ml-auto rounded-full border border-[#E8E5E1] bg-white px-2 py-1 text-[9px] font-bold uppercase text-[#5A5550]">Read only</span>
+                    </div>
+                    <div className="border-b border-[#E8E5E1] px-4 py-3 text-xs">
+                      <span className="font-bold text-[#5A5550]">Subject: </span>
+                      <span className="font-semibold text-[#101010]">{candidateInvitationTemplate.split('\n')[0].replace(/^Subject Line:\s*/, '')}</span>
+                    </div>
+                    <div className="px-4 py-4 text-xs leading-6 text-[#101010]">
+                      <p className="whitespace-pre-line">{candidateInvitationBody}</p>
+                      <div className="mt-5 border-l-2 border-red-600 pl-3 leading-5">
+                        {candidateInvitationSignoff.map((line, index) => (
+                          <p key={line} className={index === candidateInvitationSignoff.length - 1
+                            ? 'mt-1 italic text-[#5A5550]'
+                            : index === 2 ? 'font-bold text-[#101010]' : 'text-[#101010]'}>
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {type === 'evaluator' && (
+                  <textarea
+                    id="invite-notes"
+                    maxLength={4000}
+                    rows={3}
+                    value={evaluatorNotes}
+                    onChange={(event) => setEvaluatorNotes(event.target.value)}
+                    placeholder="Add optional review instructions..."
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                  />
+                )}
               </div>
 
               {/* Submit Button */}

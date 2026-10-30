@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import type { SendMailOptions } from 'nodemailer';
+import path from 'node:path';
 import { CandidateVideo, InviteLink, SystemSettings } from '../../types';
 import { PortalRepository } from '../repositories/PortalRepository';
 
@@ -15,7 +17,7 @@ const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => (
 export class EmailService {
   constructor(private readonly repository: PortalRepository) {}
 
-  private async send(to: string, subject: string, html: string) {
+  private async send(to: string, subject: string, html: string, attachments: SendMailOptions['attachments'] = []) {
     const { settings, password } = await this.repository.getSmtpCredentials();
     if (!settings.smtpHost || !settings.smtpUsername || !password || !settings.smtpFromAddress) {
       throw new Error('SMTP is not configured. Save the email server settings first.');
@@ -32,6 +34,7 @@ export class EmailService {
       to,
       subject,
       html: this.emailLayout(html),
+      attachments,
     });
   }
 
@@ -63,17 +66,48 @@ export class EmailService {
     const action = candidateInvite
       ? invite.answerMode === 'record' ? 'record your requested video responses' : 'upload your requested video responses'
       : 'review the assigned candidate submission';
-    const subject = candidateInvite ? `Video submission link: ${invite.roleApplied || 'Candidate role'}` : `Candidate review assignment: ${invite.roleApplied || 'Review'}`;
+    const noteSubject = invite.notes?.match(/^Subject Line:\s*(.+)$/im)?.[1]?.trim();
+    const subject = candidateInvite
+      ? noteSubject || `Video submission link: ${invite.roleApplied || 'Candidate role'}`
+      : `Candidate review assignment: ${invite.roleApplied || 'Review'}`;
+    const invitationNotes = (invite.notes || '')
+      .replace(/^Subject Line:\s*.+(?:\r?\n|$)/im, '')
+      .trim();
+    const invitationLines = invitationNotes.split(/\r?\n/);
+    const signoffIndex = invitationLines.findIndex((line) => line.trim().toLowerCase() === 'kind regards');
+    const invitationBody = (signoffIndex >= 0 ? invitationLines.slice(0, signoffIndex) : invitationLines).join('\n').trim();
+    const invitationSignoff = signoffIndex >= 0 ? invitationLines.slice(signoffIndex).filter((line) => line.trim()) : [];
+    const notesHtml = invitationNotes
+      ? `<div style="margin:20px 0;white-space:pre-line">${escapeHtml(invitationBody)}</div>
+         ${invitationSignoff.length
+           ? `<div style="margin-top:24px;padding-left:12px;border-left:3px solid #D81F27;line-height:1.55">
+                ${invitationSignoff.map((line, index) => `<div style="${index === invitationSignoff.length - 1 ? 'margin-top:4px;color:#5A5550;font-style:italic' : index === 2 ? 'font-weight:700;color:#101010' : 'color:#101010'}">${escapeHtml(line)}</div>`).join('')}
+              </div>`
+           : ''}`
+      : '';
+    const logoHtml = candidateInvite
+      ? '<p style="margin:0 0 20px"><img src="cid:p2p-recruitment-logo" alt="P2P Recruitment" width="160" style="display:block;width:160px;height:auto"></p>'
+      : '';
 
     await this.send(invite.recipientEmail, subject, `
-      <h1 style="font-size:22px;color:#101010;margin:0 0 16px">You have a secure invitation</h1>
-      <p>Hello ${recipientName},</p>
-      <p>You have been invited to ${action} for <strong>${position}</strong>.</p>
-      ${this.actionButton(linkUrl, candidateInvite ? invite.answerMode === 'record' ? 'Open recording portal' : 'Open upload portal' : 'Open review assignment')}
+      ${logoHtml}
+      ${candidateInvite && invitationNotes
+        ? `<p>Hello ${recipientName},</p>
+           ${this.actionButton(linkUrl, invite.answerMode === 'record' ? 'Open recording portal' : 'Open upload portal')}
+           <div>${notesHtml}</div>`
+        : `<h1 style="font-size:22px;color:#101010;margin:0 0 16px">You have a secure invitation</h1>
+           <p>Hello ${recipientName},</p>
+           <p>You have been invited to ${action} for <strong>${position}</strong>.</p>
+           ${notesHtml}`}
+      ${candidateInvite && invitationNotes ? '' : this.actionButton(linkUrl, candidateInvite ? invite.answerMode === 'record' ? 'Open recording portal' : 'Open upload portal' : 'Open review assignment')}
       <p style="font-size:12px;color:#8A8580">This secure link expires at ${escapeHtml(new Date(invite.expiresAt).toLocaleString())}.</p>
       <p style="font-size:12px;color:#8A8580;word-break:break-all">If the button does not work, copy this link:<br>${safeUrl}</p>
       <p>If you were not expecting this message, you can ignore it.</p>
-    `);
+    `, candidateInvite ? [{
+      filename: 'p2plogo.webp',
+      path: path.resolve(process.cwd(), 'assets', 'p2plogo.webp'),
+      cid: 'p2p-recruitment-logo',
+    }] : []);
   }
 
   async sendExpiryUpdated(invite: InviteLink, linkUrl: string): Promise<void> {
