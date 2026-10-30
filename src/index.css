@@ -5,28 +5,38 @@
   --font-heading: "Archivo Expanded", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
+  --color-p2p-red: #D81F27;
+  --color-p2p-white: #FFFFFF;
+  --color-p2p-red-hover: #A5121A;
+  --color-p2p-ink: #101010;
+  --color-p2p-charcoal: #232323;
+  --color-p2p-copy: #3A3A3A;
+  --color-p2p-muted: #8A8580;
+  --color-p2p-paper: #F5F2EE;
+  --color-p2p-border: #E8E5E1;
+
   --color-red-50: #FFF1F2;
   --color-red-100: #FFE4E6;
   --color-red-200: #FECDD3;
   --color-red-300: #FDA4AF;
   --color-red-400: #FB7185;
   --color-red-500: #E54249;
-  --color-red-600: #D81F27;
-  --color-red-700: #A5121A;
+  --color-red-600: var(--color-p2p-red);
+  --color-red-700: var(--color-p2p-red-hover);
   --color-red-800: #7F1118;
   --color-red-900: #5A1519;
   --color-red-950: #3A0B10;
 
-  --color-gray-50: #F5F2EE;
-  --color-gray-100: #E8E5E1;
+  --color-gray-50: var(--color-p2p-paper);
+  --color-gray-100: var(--color-p2p-border);
   --color-gray-200: #E0DBD5;
   --color-gray-300: #C9C4BE;
-  --color-gray-400: #8A8580;
+  --color-gray-400: var(--color-p2p-muted);
   --color-gray-500: #5A5550;
   --color-gray-600: #5A5550;
   --color-gray-700: #3A3A3A;
   --color-gray-800: #232323;
-  --color-gray-900: #101010;
+  --color-gray-900: var(--color-p2p-ink);
   --color-gray-950: #101010;
 
   --color-rose-50: #FFF1F2;
@@ -44,18 +54,18 @@
 
 @layer base {
   :root {
-    --primary-red: #D81F27;
-    --primary-red-hover: #A5121A;
+    --primary-red: var(--color-p2p-red);
+    --primary-red-hover: var(--color-p2p-red-hover);
     --primary-red-active: #7F1118;
     --bg-red-tint: #FFF1F2;
     --border-red-subtle: #FFE4E6;
-    --brand-ink: #101010;
-    --brand-charcoal: #232323;
-    --brand-copy: #3A3A3A;
+    --brand-ink: var(--color-p2p-ink);
+    --brand-charcoal: var(--color-p2p-charcoal);
+    --brand-copy: var(--color-p2p-copy);
     --brand-secondary: #5A5550;
-    --brand-muted: #8A8580;
-    --brand-alabaster: #F5F2EE;
-    --brand-border: #E8E5E1;
+    --brand-muted: var(--color-p2p-muted);
+    --brand-alabaster: var(--color-p2p-paper);
+    --brand-border: var(--color-p2p-border);
     --brand-divider: #E0DBD5;
   }
 
@@ -63,8 +73,8 @@
     font-family: "Archivo", Arial, sans-serif;
     font-size: 15px;
     line-height: 1.62;
-    background-color: #F5F2EE;
-    color: #101010;
+    background-color: var(--color-p2p-paper);
+    color: var(--color-p2p-ink);
   }
 
   h1,
@@ -77,18 +87,18 @@
   }
 
   ::selection {
-    background-color: #D81F27;
-    color: #FFFFFF;
+    background-color: var(--color-p2p-red);
+    color: var(--color-p2p-white);
   }
 }
 
 .bg-canvas {
-  background-color: #F5F2EE;
+  background-color: var(--color-p2p-paper);
 }
 
 .card-minimal {
-  background-color: #FFFFFF;
-  border: 1px solid #E8E5E1;
+  background-color: var(--color-p2p-white);
+  border: 1px solid var(--color-p2p-border);
   border-radius: 1rem;
 }
 
@@ -102,11 +112,11 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #E0DBD5;
+  background: var(--color-gray-200);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #D81F27;
+  background: var(--color-p2p-red);
 }
 

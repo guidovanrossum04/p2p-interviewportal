@@ -67,7 +67,7 @@ ALTER TABLE share_links ADD COLUMN IF NOT EXISTS rubric_weights JSONB NOT NULL D
 
 CREATE TABLE IF NOT EXISTS assignments (
   id TEXT PRIMARY KEY,
-  video_id TEXT NOT NULL UNIQUE REFERENCES videos(id),
+  video_id TEXT NOT NULL REFERENCES videos(id),
   evaluator_id TEXT NOT NULL REFERENCES users(id),
   share_link_id TEXT NOT NULL REFERENCES share_links(id),
   status TEXT NOT NULL DEFAULT 'assigned' CHECK (status IN ('assigned', 'in_review', 'completed')),
@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS assignments (
 );
 
 ALTER TABLE assignments DROP CONSTRAINT IF EXISTS assignments_share_link_id_key;
+ALTER TABLE assignments DROP CONSTRAINT IF EXISTS assignments_video_id_key;
 
 CREATE TABLE IF NOT EXISTS evaluations (
   id TEXT PRIMARY KEY,

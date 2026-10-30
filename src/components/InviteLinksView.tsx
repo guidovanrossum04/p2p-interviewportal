@@ -88,13 +88,10 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800 border border-red-200">
               Admin Access Management
             </span>
-            <span className="text-xs text-red-900/60 font-medium">Link-Based Invitation Pipeline</span>
+            
           </div>
           <h2 className="text-2xl font-extrabold text-[#101010] tracking-tight">Shareable Access Links</h2>
-          <p className="text-xs text-red-900/70 mt-1 max-w-2xl">
-            Only administrators generate secure invitation links for candidates to upload their self-introduction videos
-            and Managers / Employers to review assigned assessments. Uninvited public access is disabled.
-          </p>
+          
         </div>
 
         <button
@@ -114,7 +111,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             <span className="material-symbols-outlined text-2xl">link</span>
           </div>
           <div>
-            <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-black-900/60 uppercase tracking-wider block">
               Active Links on This Page
             </span>
             <span className="text-2xl font-extrabold text-[#101010]">{activeCount}</span>
@@ -127,7 +124,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             <span className="material-symbols-outlined text-2xl">video_camera_front</span>
           </div>
           <div>
-            <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-black-900/60 uppercase tracking-wider block">
               Candidate Upload Invites
             </span>
             <span className="text-2xl font-extrabold text-[#101010]">{candidateLinksCount}</span>
@@ -140,7 +137,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             <span className="material-symbols-outlined text-2xl">rate_review</span>
           </div>
           <div>
-            <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-black-900/60 uppercase tracking-wider block">
               Manager / Employer Review Invites
             </span>
             <span className="text-2xl font-extrabold text-[#101010]">{evaluatorLinksCount}</span>
@@ -230,238 +227,216 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
       </div>
 
       {/* Links List */}
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#E8E5E1] text-center text-sm text-[#8A8580]">Loading access links...</div>
-        ) : filteredLinks.length === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#E8E5E1] text-center space-y-3">
-            <span className="material-symbols-outlined text-4xl text-red-300">link_off</span>
-            <p className="font-bold text-sm text-[#101010]">No shareable links found</p>
-            <p className="text-xs text-red-900/60 max-w-sm mx-auto">
-              Create an invitation link for a candidate upload or a Manager / Employer review.
-            </p>
-            <button
-              type="button"
-              onClick={onOpenCreateLink}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-sm">add_link</span>
-              <span>Create Access Link</span>
-            </button>
+      {isLoading ? (
+        <div className="bg-white p-12 rounded-2xl border border-[#E8E5E1] text-center text-sm text-[#8A8580]">Loading access links...</div>
+      ) : filteredLinks.length === 0 ? (
+        <div className="bg-white p-12 rounded-2xl border border-[#E8E5E1] text-center space-y-3">
+          <span className="material-symbols-outlined text-4xl text-red-300">link_off</span>
+          <p className="font-bold text-sm text-[#101010]">No shareable links found</p>
+          <p className="text-xs text-red-900/60 max-w-sm mx-auto">
+            Create an invitation link for a candidate upload or a Manager / Employer review.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenCreateLink}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm">add_link</span>
+            <span>Create Access Link</span>
+          </button>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-[#E8E5E1] bg-white shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1050px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-[#E8E5E1] bg-[#F5F2EE] text-[10px] font-bold uppercase tracking-wider text-[#5A5550]">
+                  <th className="px-4 py-3">Link type</th>
+                  <th className="px-4 py-3">Recipient</th>
+                  <th className="px-4 py-3">Candidate / position</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Created</th>
+                  <th className="px-4 py-3">Expires</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E5E1] text-xs">
+                {filteredLinks.map((link) => {
+                  const isCandidate = link.type === 'candidate';
+                  const isRevoked = link.status === 'revoked';
+                  const isUsed = link.status === 'used';
+                  const isExpired = new Date(link.expiresAt) < new Date();
+                  const canExtend = !isRevoked && !isUsed;
+                  const canShare = Boolean(link.token) && !link.token.startsWith('...');
+                  const submissionVideos = videos.filter((video) => getSubmissionId(video) === (link.submissionId || link.id));
+                  const statusLabel = isRevoked ? 'Revoked' : isUsed ? 'Submitted' : isExpired ? 'Expired' : 'Active';
+                  const statusClass = isRevoked
+                    ? 'bg-gray-100 text-gray-700'
+                    : isUsed
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : isExpired
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-emerald-100 text-emerald-800';
+
+                  return (
+                    <React.Fragment key={link.id}>
+                      <tr className={`align-top hover:bg-[#FAF9F7] ${isRevoked ? 'bg-gray-50/70 text-gray-500' : ''}`}>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${
+                            isCandidate ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-red-200 bg-red-50 text-red-800'
+                          }`}>
+                            <span className="material-symbols-outlined text-[13px]">
+                              {isCandidate ? 'video_camera_front' : 'rate_review'}
+                            </span>
+                            {isCandidate ? 'Candidate upload' : 'Manager / Employer review'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-[#101010]">{link.recipientName}</p>
+                          <p className="mt-0.5 text-[10px] text-[#8A8580]">{link.recipientEmail || 'No email provided'}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-[#101010]">{link.assignedCandidateName || link.roleApplied || '—'}</p>
+                          {link.assignedCandidateName && link.roleApplied && (
+                            <p className="mt-0.5 text-[10px] text-[#8A8580]">{link.roleApplied}</p>
+                          )}
+                          {isCandidate && submissionVideos.length > 0 && (
+                            <p className="mt-1 text-[10px] font-medium text-[#5A5550]">
+                              {submissionVideos.filter((video) => video.adminReviewStatus === 'accepted').length}/{submissionVideos.length} videos approved
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${statusClass}`}>{statusLabel}</span>
+                          {isCandidate && submissionVideos.some((video) => video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject') && (
+                            <p className="mt-1 text-[10px] font-semibold text-rose-700">Employer rejected</p>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-[11px] text-[#5A5550]">{formatExpiry(link.createdAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-[11px] text-[#5A5550]">{formatExpiry(link.expiresAt)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              disabled={!canShare}
+                              title={canShare ? 'Copy share link' : 'This older link cannot be copied.'}
+                              onClick={() => { if (canShare) void handleCopy(link.id, link.token, link.type); }}
+                              className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">{copiedId === link.id ? 'done' : 'content_copy'}</span>
+                              {copiedId === link.id ? 'Copied' : 'Copy'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDetailsId(expandedDetailsId === link.id ? null : link.id)}
+                              title="View link details"
+                              aria-label={expandedDetailsId === link.id ? 'Hide link details' : 'View link details'}
+                              className="rounded-lg border border-[#E8E5E1] p-1.5 text-[#5A5550] hover:bg-[#F5F2EE]"
+                            >
+                              <span className="material-symbols-outlined block text-[16px]">{expandedDetailsId === link.id ? 'expand_less' : 'info'}</span>
+                            </button>
+                            {canExtend && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const baseline = Math.max(new Date(link.expiresAt).getTime(), Date.now());
+                                  setExpiryDraft(toDateTimeLocalValue(new Date(baseline + 24 * 60 * 60 * 1000)));
+                                  setExpiryError(null);
+                                  setEditingExpiryId(link.id);
+                                }}
+                                title="Extend expiry"
+                                aria-label="Extend link expiry"
+                                className="rounded-lg border border-amber-200 p-1.5 text-amber-800 hover:bg-amber-50"
+                              >
+                                <span className="material-symbols-outlined block text-[16px]">event</span>
+                              </button>
+                            )}
+                            {!isRevoked && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await onRevokeLink(link.id);
+                                  await onQueryChange(page, filterType, filterStatus, search);
+                                }}
+                                title="Revoke link access"
+                                aria-label="Revoke link access"
+                                className="rounded-lg border border-[#E8E5E1] p-1.5 text-[#8A8580] hover:bg-red-50 hover:text-red-700"
+                              >
+                                <span className="material-symbols-outlined block text-[16px]">block</span>
+                              </button>
+                            )}
+                          </div>
+                          {copyErrorId === link.id && <p role="alert" className="mt-1 text-right text-[10px] text-red-700">Clipboard access failed.</p>}
+                          {editingExpiryId === link.id && (
+                            <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
+                              <input
+                                type="datetime-local"
+                                value={expiryDraft}
+                                min={toDateTimeLocalValue(new Date(Date.now() + 60 * 1000))}
+                                onChange={(event) => setExpiryDraft(event.target.value)}
+                                aria-label="New link expiry date and time"
+                                className="rounded-lg border border-[#E8E5E1] px-2 py-1.5 text-[10px]"
+                              />
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    if (!expiryDraft || new Date(expiryDraft) <= new Date()) throw new Error('Choose a future expiry date and time.');
+                                    await onExtendExpiry(link.id, expiryDraft);
+                                    await onQueryChange(page, filterType, filterStatus, search);
+                                    setEditingExpiryId(null);
+                                    setExpiryError(null);
+                                  } catch (error) {
+                                    setExpiryError(error instanceof Error ? error.message : 'Could not extend this link.');
+                                  }
+                                }}
+                                className="rounded-lg bg-amber-700 px-2.5 py-1.5 text-[10px] font-bold text-white"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setEditingExpiryId(null); setExpiryError(null); }}
+                                className="px-1.5 py-1 text-[10px] font-semibold text-[#5A5550]"
+                              >
+                                Cancel
+                              </button>
+                              {expiryError && <p role="alert" className="w-full text-right text-[10px] text-red-700">{expiryError}</p>}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                      {expandedDetailsId === link.id && (
+                        <tr className="bg-red-50/40">
+                          <td colSpan={7} className="px-5 py-3">
+                            <div className="grid gap-2 text-[11px] sm:grid-cols-2 lg:grid-cols-4">
+                              <p><strong>Access count:</strong> {link.accessCount ?? 0}</p>
+                              <p><strong>Created by:</strong> {link.createdBy || 'Administrator'}</p>
+                              {link.notes && <p className="sm:col-span-2"><strong>Notes:</strong> {link.notes}</p>}
+                              {isCandidate && submissionVideos.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-2 lg:col-span-4">
+                                  <span className="font-semibold">Submission videos: {submissionVideos.length}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setReviewingInviteId(link.id)}
+                                    className="font-bold text-red-700 hover:text-red-900"
+                                  >
+                                    Review submissions
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          filteredLinks.map((link) => {
-            const isCandidate = link.type === 'candidate';
-            const isRevoked = link.status === 'revoked';
-            const isUsed = link.status === 'used';
-            const isExpired = new Date(link.expiresAt) < new Date();
-            const canExtend = !isRevoked && !isUsed;
-            const canShare = Boolean(link.token) && !link.token.startsWith('...');
-            const fullUrl = canShare ? getFullUrl(link.token, link.type) : '';
-            const submissionVideos = videos.filter((video) => getSubmissionId(video) === (link.submissionId || link.id));
-
-            return (
-              <div
-                key={link.id}
-                className={`bg-white rounded-2xl border p-5 transition-all shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
-                  isRevoked
-                    ? 'border-gray-200 opacity-60 bg-gray-50'
-                    : isExpired
-                    ? 'border-amber-200 bg-amber-50/20'
-                    : 'border-[#E8E5E1] hover:border-red-300'
-                }`}
-              >
-                {/* Left Info */}
-                <div className="space-y-2 flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
-                        isCandidate
-                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                          : 'bg-red-100 text-red-800 border border-red-200'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[12px]">
-                        {isCandidate ? 'video_camera_front' : 'rate_review'}
-                      </span>
-                      {isCandidate ? 'Candidate Upload Link' : 'Manager / Employer Review Link'}
-                    </span>
-
-                    {isRevoked ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-200 text-gray-700">
-                        Revoked
-                      </span>
-                    ) : isUsed ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800">
-                        Submitted
-                      </span>
-                    ) : isExpired ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800">
-                        Expired
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800">
-                        Active & Shareable
-                      </span>
-                    )}
-
-                    <span className="text-[11px] text-red-900/60">• Created {new Date(link.createdAt).toLocaleDateString()}</span>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                    <div>
-                      <span className="text-red-900/60 font-medium">Recipient: </span>
-                      <strong className="text-[#101010]">{link.recipientName}</strong>
-                      {link.recipientEmail && <span className="text-[#8A8580]"> ({link.recipientEmail})</span>}
-                    </div>
-
-                    {link.roleApplied && (
-                      <div>
-                        <span className="text-red-900/60 font-medium">Position: </span>
-                        <span className="text-[#101010] font-semibold">{link.roleApplied}</span>
-                      </div>
-                    )}
-                    {link.assignedCandidateName && (
-                      <div>
-                        <span className="text-red-900/60 font-medium">Assigned Candidate: </span>
-                        <span className="text-red-700 font-bold">{link.assignedCandidateName}</span>
-                      </div>
-                    )}
-
-                  </div>
-                  {isCandidate && submissionVideos.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1 text-[10px] font-bold">
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-800">
-                        Approved {submissionVideos.filter((video) => video.adminReviewStatus === 'accepted').length}
-                      </span>
-                      {submissionVideos.some((video) => video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject') && (
-                        <span className="rounded-full bg-rose-100 px-2.5 py-1 text-rose-800">
-                          Employer decision: submission rejected
-                        </span>
-                      )}
-                      {submissionVideos.some((video) => video.adminReviewStatus !== 'accepted') && (
-                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">
-                          Awaiting review {submissionVideos.filter((video) => video.adminReviewStatus !== 'accepted').length}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-3 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedDetailsId(expandedDetailsId === link.id ? null : link.id)}
-                      className="text-xs font-bold text-red-700 hover:text-red-900"
-                    >
-                      {expandedDetailsId === link.id ? 'Hide details' : 'View details'}
-                    </button>
-                    {isCandidate && submissionVideos.length > 0 && (
-                      <button type="button" onClick={() => setReviewingInviteId(link.id)} className="text-xs font-bold text-red-700 hover:text-red-900">
-                        Review submissions ({submissionVideos.length})
-                      </button>
-                    )}
-                  </div>
-                  {expandedDetailsId === link.id && (
-                    <div className="mt-3 rounded-xl bg-red-50/50 border border-red-100 p-3 grid sm:grid-cols-2 gap-2 text-[11px]">
-                      <p><strong>Created:</strong> {formatExpiry(link.createdAt)}</p>
-                      <p><strong>Expires:</strong> {formatExpiry(link.expiresAt)}</p>
-                      <p><strong>Access count:</strong> {link.accessCount ?? 0}</p>
-                      <p><strong>Created by:</strong> {link.createdBy || 'Administrator'}</p>
-                      {link.notes && <p className="sm:col-span-2"><strong>Notes:</strong> {link.notes}</p>}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right Action Buttons */}
-                <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-end md:self-center">
-                  {canExtend && editingExpiryId !== link.id && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const existingExpiry = new Date(link.expiresAt).getTime();
-                        const baseline = Math.max(existingExpiry, Date.now());
-                        setExpiryDraft(toDateTimeLocalValue(new Date(baseline + 24 * 60 * 60 * 1000)));
-                        setExpiryError(null);
-                        setEditingExpiryId(link.id);
-                      }}
-                      className="px-3 py-1.5 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold cursor-pointer"
-                    >
-                      Extend Expiry
-                    </button>
-                  )}
-                  {editingExpiryId === link.id && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <input
-                        type="datetime-local"
-                        value={expiryDraft}
-                        min={toDateTimeLocalValue(new Date(Date.now() + 60 * 1000))}
-                        onChange={(event) => setExpiryDraft(event.target.value)}
-                        aria-label="New link expiry date and time"
-                        className="rounded-lg border border-[#E8E5E1] px-2 py-1.5 text-xs"
-                      />
-                      <span className="text-[10px] text-[#8A8580]">Recipient will be emailed automatically.</span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            if (!expiryDraft || new Date(expiryDraft) <= new Date()) throw new Error('Choose a future expiry date and time.');
-                            await onExtendExpiry(link.id, expiryDraft);
-                              await onQueryChange(page, filterType, filterStatus, search);
-                            setEditingExpiryId(null);
-                            setExpiryError(null);
-                          } catch (error) {
-                            setExpiryError(error instanceof Error ? error.message : 'Could not extend this link.');
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingExpiryId(null); setExpiryError(null); }}
-                        className="px-2 py-1.5 text-xs font-semibold text-[#8A8580] hover:text-[#101010]"
-                      >
-                        Cancel
-                      </button>
-                      {expiryError && <p role="alert" className="w-full text-[11px] text-red-700">{expiryError}</p>}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    disabled={!canShare}
-                    title={canShare ? 'Copy share link' : 'This older link cannot be copied. Create a new link to get a copyable URL.'}
-                    onClick={() => { if (canShare) void handleCopy(link.id, link.token, link.type); }}
-                    className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-red-500/20 flex items-center gap-1.5 cursor-pointer disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      {copiedId === link.id ? 'done' : 'content_copy'}
-                    </span>
-                    <span>{copiedId === link.id ? 'Copied Link!' : 'Copy Link'}</span>
-                  </button>
-                  {copyErrorId === link.id && (
-                    <span role="alert" className="w-full text-right text-[10px] text-red-700">Clipboard access failed. Allow clipboard permission and try again.</span>
-                  )}
-
-                  {!isRevoked && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await onRevokeLink(link.id);
-                        await onQueryChange(page, filterType, filterStatus, search);
-                      }}
-                      className="p-1.5 text-[#8A8580] hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                      title="Revoke link access"
-                    >
-                      <span className="material-symbols-outlined text-base">block</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+        </div>
+      )}
       {total > pageSize && (
         <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E8E5E1] p-4">
           <span className="text-xs text-[#8A8580]">
@@ -487,7 +462,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             {videos.filter((video) => getSubmissionId(video) === (inviteLinks.find((link) => link.id === reviewingInviteId)?.submissionId || reviewingInviteId)).map((video, index) => (
               <div key={video.id} className="flex justify-between items-center gap-3 border rounded-xl p-3">
                 <div>
-                  <p className="text-xs font-bold">{index + 1}. {video.roleApplied} submission</p>
+                  <p className="text-xs font-bold">{index + 1}. {video.questionPrompt || `${video.roleApplied} submission`}</p>
                   <p className="text-[11px] text-[#8A8580]">
                     {video.submittedTimeAgo} · {video.adminReviewStatus === 'accepted'
                       ? 'Approved'

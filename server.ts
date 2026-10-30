@@ -37,7 +37,34 @@ function getGeminiClient(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const DEFAULT_PORT = Number(process.env.PORT) || 3000;
+  const FALLBACK_PORT = 3001;
+
+  const startListening = (port: number) => {
+    const server = createServer(app);
+    attachAdminNotificationSocket(server, (sessionToken) => {
+      const expiresAt = adminSessions.get(sessionToken);
+      if (!expiresAt) return undefined;
+      if (expiresAt <= Date.now()) {
+        adminSessions.delete(sessionToken);
+        return undefined;
+      }
+      return expiresAt;
+    });
+
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EADDRINUSE' && port === DEFAULT_PORT) {
+        console.warn(`Port ${port} is already in use; retrying on ${FALLBACK_PORT}.`);
+        startListening(FALLBACK_PORT);
+        return;
+      }
+      throw error;
+    });
+
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`InterviewPro backend running on http://0.0.0.0:${port}`);
+    });
+  };
 
   app.use(express.json());
   if (databaseEnabled) {
@@ -474,7 +501,7 @@ Return a concise JSON object in this exact format:
   });
 
   app.post("/api/invites", (req, res) => {
-    const { type, recipientName, recipientEmail, roleApplied, department, assignedVideoId, expiresInHours = 48, notes, createdBy } = req.body;
+    const { type, recipientName, recipientEmail, roleApplied, department, assignedVideoId, expiresInHours = 48, notes, createdBy, answerMode, videoCount, questionPrompt } = req.body;
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const token = type === 'candidate' ? `INV-CAND-${randomSuffix}` : `INV-EVAL-${randomSuffix}`;
     const now = new Date();
@@ -516,6 +543,9 @@ Return a concise JSON object in this exact format:
       expiresInHours: Number(expiresInHours) || 48,
       createdBy: createdBy || 'Admin',
       notes: notes || '',
+      answerMode: type === 'candidate' ? (answerMode === 'record' ? 'record' : 'upload') : undefined,
+      videoCount: type === 'candidate' ? Math.max(1, Number(videoCount) || 1) : undefined,
+      questionPrompt: type === 'candidate' ? (typeof questionPrompt === 'string' && questionPrompt.trim() ? questionPrompt : undefined) : undefined,
       accessCount: 0,
     };
 
@@ -593,19 +623,7 @@ Return a concise JSON object in this exact format:
     });
   }
 
-  const server = createServer(app);
-  attachAdminNotificationSocket(server, (sessionToken) => {
-    const expiresAt = adminSessions.get(sessionToken);
-    if (!expiresAt) return undefined;
-    if (expiresAt <= Date.now()) {
-      adminSessions.delete(sessionToken);
-      return undefined;
-    }
-    return expiresAt;
-  });
-  server.listen(PORT, "0.0.0.0", () => {
-    console.log(`InterviewPro backend running on http://0.0.0.0:${PORT}`);
-  });
+  startListening(DEFAULT_PORT);
 }
 
 startServer();

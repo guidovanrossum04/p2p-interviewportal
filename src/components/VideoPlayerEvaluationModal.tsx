@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { CandidateVideo, RubricWeight } from '../types';
 import { GENERIC_VIDEO_THUMBNAIL } from '../data/placeholders';
+import { adminReviewRubric } from '../data/adminReviewRubric';
+import p2pLogo from '../../assets/p2plogo.webp';
 
 interface VideoPlayerEvaluationModalProps {
   video: CandidateVideo;
@@ -11,7 +13,7 @@ interface VideoPlayerEvaluationModalProps {
   onClose: () => void;
   readOnly?: boolean;
   canReviewSubmission?: boolean;
-  onReviewSubmission?: (videoId: string, decision: 'accepted' | 'reupload_requested', feedback: string) => Promise<CandidateVideo>;
+  onReviewSubmission?: (videoId: string, decision: 'accepted' | 'reupload_requested', feedback: string, scores: Record<string, number>) => Promise<CandidateVideo>;
   onSubmitEvaluation: (evaluationData: {
     videoId: string;
     scores: Record<string, number>;
@@ -47,39 +49,51 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
   const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   // Form states
-  const [scores, setScores] = useState<Record<string, number>>(() =>
-    Object.fromEntries(rubricWeights.map((criterion) => [
-      criterion.id,
-      video.evaluation?.scores[criterion.id] ?? 4,
-    ]))
+  const [scores, setScores] = useState<Record<string, number>>(
+    () => Object.fromEntries(rubricWeights.map((criterion) => [criterion.id, 0])),
   );
-  const [decision, setDecision] = useState<'selected' | 'rejected'>(
-    video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject' ? 'rejected' : 'selected',
-  );
-  const [notes, setNotes] = useState(video.evaluation?.notes || '');
+  const [ratedCriteria, setRatedCriteria] = useState<string[]>([]);
+  const [decision, setDecision] = useState<'selected' | 'rejected'>('selected');
+  const [notes, setNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [evaluationSubmitted, setEvaluationSubmitted] = useState(false);
+  const [reviewedVideoIds, setReviewedVideoIds] = useState<string[]>([]);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [adminFeedback, setAdminFeedback] = useState(video.adminFeedback || '');
   const [reviewStatus, setReviewStatus] = useState(video.adminReviewStatus || 'pending');
   const [isSavingAdminReview, setIsSavingAdminReview] = useState(false);
+  const [adminReviewScores, setAdminReviewScores] = useState<Record<string, number>>(() =>
+    Object.fromEntries(adminReviewRubric.map((criterion) => [
+      criterion.id,
+      video.adminReviewScores?.[criterion.id] ?? 3,
+    ]))
+  );
 
   useEffect(() => {
-    setDecision(video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject' ? 'rejected' : 'selected');
-    setSubmissionError(null);
     setCurrentTime(0);
     setDuration(video.durationSeconds || 300);
     setUseSimulationMode(false);
     setPlaybackError(null);
+    setScores(Object.fromEntries(rubricWeights.map((criterion) => [criterion.id, 0])));
+    setRatedCriteria([]);
+    setDecision('selected');
+    setNotes('');
+    setEvaluationSubmitted(false);
+    setSubmissionError(null);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.load();
     }
-  }, [video.id]);
+  }, [video.id, rubricWeights]);
 
   useEffect(() => {
     setAdminFeedback(video.adminFeedback || '');
     setReviewStatus(video.adminReviewStatus || 'pending');
+    setAdminReviewScores(Object.fromEntries(adminReviewRubric.map((criterion) => [
+      criterion.id,
+      video.adminReviewScores?.[criterion.id] ?? 3,
+    ])));
   }, [video.id, video.adminConfirmed, video.adminFeedback, video.adminReviewStatus]);
 
   useEffect(() => {
@@ -100,6 +114,9 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
   const overallScore = Math.round(
     rubricWeights.reduce((total, criterion) => total + (scores[criterion.id] || 1) * criterion.weight, 0) / 5
   );
+  const adminOverallRating = adminReviewRubric.reduce((total, criterion) => total + (adminReviewScores[criterion.id] || 1), 0)
+    / adminReviewRubric.length;
+  const allRubricCriteriaRated = rubricWeights.every((criterion) => ratedCriteria.includes(criterion.id));
   const hasVideoPicker = (canReviewSubmission || !readOnly) && submissionVideos.length > 1;
 
   // Simulation timer loop
@@ -274,6 +291,14 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!allRubricCriteriaRated) {
+      setSubmissionError('Rate every Standard Evaluation Rubric criterion before submitting.');
+      return;
+    }
+    if (!notes.trim() || notes.trim().length > 4000) {
+      setSubmissionError('Feedback is required (maximum 4,000 characters). Explain why the candidate should be recruited or rejected.');
+      return;
+    }
     setIsSubmitting(true);
     setSubmissionError(null);
     try {
@@ -284,6 +309,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
         decision,
         notes,
       });
+      setReviewedVideoIds((current) => current.includes(video.id) ? current : [...current, video.id]);
 
       // Confetti celebration
       try {
@@ -296,13 +322,43 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
         // ignore
       }
 
-      onClose();
+      setEvaluationSubmitted(true);
     } catch (error) {
       setSubmissionError(error instanceof Error ? error.message : 'Could not submit the evaluation.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (evaluationSubmitted) {
+    const nextQuestion = submissionVideos.find((item) =>
+      item.id !== video.id && !reviewedVideoIds.includes(item.id)
+    );
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+        <div role="status" className="w-full max-w-md rounded-2xl border border-[#E8E5E1] bg-white p-8 text-center shadow-2xl">
+          <img src={p2pLogo} alt="P2P Recruitment" className="mx-auto mb-4 h-14 w-auto object-contain" />
+          <span className="material-symbols-outlined text-4xl text-emerald-700" aria-hidden="true">check_circle</span>
+          <h2 className="mt-2 text-lg font-extrabold text-[#101010]">Thank you for your review!</h2>
+          <p className="mt-2 text-sm text-[#5A5550]">
+            Your review for “{video.questionPrompt || 'this question'}” has been submitted.
+          </p>
+          {nextQuestion && (
+            <button
+              type="button"
+              onClick={() => onSelectSubmissionVideo?.(nextQuestion)}
+              className="mt-6 mr-2 rounded-xl bg-red-700 px-5 py-2.5 text-xs font-bold text-white hover:bg-red-800"
+            >
+              Review next question
+            </button>
+          )}
+          <button type="button" onClick={onClose} className="mt-6 rounded-xl bg-[#101010] px-5 py-2.5 text-xs font-bold text-white hover:bg-red-700">
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const toggleFullscreen = async () => {
     const mediaContainer = mediaContainerRef.current;
@@ -323,7 +379,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
     setIsSavingAdminReview(true);
     setSubmissionError(null);
     try {
-      const reviewedVideo = await onReviewSubmission(video.id, decision, adminFeedback.trim());
+      const reviewedVideo = await onReviewSubmission(video.id, decision, adminFeedback.trim(), adminReviewScores);
       setReviewStatus(reviewedVideo.adminReviewStatus || decision);
     } catch (error) {
       setSubmissionError(error instanceof Error ? error.message : 'Could not save this review.');
@@ -355,7 +411,10 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                 )}
               </div>
               <p className="text-xs text-red-900/60 mt-0.5">Submitted {video.submittedTimeAgo}</p>
-              {video.questionPrompt && <p className="mt-1 max-w-2xl text-xs text-[#101010]">{video.questionPrompt}</p>}
+              <div className="mt-2 max-w-3xl rounded-lg border border-red-300 bg-red-50 px-3 py-2">
+                <span className="block text-[9px] font-extrabold uppercase tracking-wider text-red-700">Question for this video</span>
+                <span className="mt-0.5 block text-xs font-bold leading-4 text-[#101010]">{video.questionPrompt || 'No question was specified for this video.'}</span>
+              </div>
             </div>
           </div>
 
@@ -391,7 +450,9 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                       : 'border-transparent bg-white/60 hover:border-red-200'
                   }`}
                 >
-                  <span className="block text-[10px] font-bold text-[#101010]">Video {index + 1}</span>
+                  <span className="block text-[10px] font-bold text-[#101010]">
+                    {submissionVideo.questionPrompt || `Video ${index + 1}`}
+                  </span>
                   <span className="mt-0.5 block text-[9px] text-[#8A8580]">
                     {submissionVideo.status === 'completed'
                       ? `Reviewed · ${submissionVideo.evaluation?.decision || 'scored'}`
@@ -418,7 +479,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                   onEnded={() => setIsPlaying(false)}
                   onError={handleVideoError}
                   onCanPlay={() => setPlaybackError(null)}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   playsInline
                   muted={isMuted}
                 />
@@ -606,6 +667,63 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                         : reviewStatus === 'reupload_requested' ? 'Reupload requested' : 'Awaiting admin review'}
                     </span>
                   </div>
+                  {submissionVideos.length > 1 && (
+                    <label className="block text-[11px] font-semibold text-[#101010]">
+                        Question to review or request reupload
+                        <select
+                          value={video.id}
+                          onChange={(event) => {
+                            const nextVideo = submissionVideos.find((item) => item.id === event.target.value);
+                            if (nextVideo) onSelectSubmissionVideo?.(nextVideo);
+                          }}
+                          className="mt-1 w-full rounded-lg border border-[#E8E5E1] bg-white px-2.5 py-2 text-xs font-normal text-[#101010] focus:border-red-500 focus:outline-none"
+                        >
+                          {submissionVideos.map((item, index) => (
+                            <option key={item.id} value={item.id}>{item.questionPrompt || `Video ${index + 1}`}</option>
+                          ))}
+                        </select>
+                    </label>
+                  )}
+                  <div className="rounded-lg border border-red-200 bg-red-50/50 p-3">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                        <div>
+                          <h5 className="text-xs font-extrabold text-[#101010]">Admin question rating</h5>
+                          <p className="text-[10px] text-[#5A5550]">Rate each area from 1 to 5.</p>
+                        </div>
+                        <span className="rounded-lg bg-[#101010] px-2.5 py-1 text-[11px] font-extrabold text-white">
+                          Overall {adminOverallRating.toFixed(1)} / 5
+                        </span>
+                    </div>
+                    <div className="space-y-2">
+                        {adminReviewRubric.map((criterion) => (
+                          <div key={criterion.id} className="rounded-lg bg-white px-2.5 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-semibold text-[#101010]">{criterion.name}</span>
+                              <span className="text-[10px] font-extrabold text-red-700">{adminReviewScores[criterion.id]} / 5</span>
+                            </div>
+                            <div className="mt-1.5 flex items-center gap-1" role="group" aria-label={`${criterion.name} star rating`}>
+                              {[1, 2, 3, 4, 5].map((rating) => (
+                                <button
+                                  key={rating}
+                                  type="button"
+                                  aria-label={`${criterion.name}: rate ${rating} out of 5`}
+                                  aria-pressed={adminReviewScores[criterion.id] >= rating}
+                                  title={`${rating} out of 5`}
+                                  onClick={() => setAdminReviewScores((current) => ({ ...current, [criterion.id]: rating }))}
+                                  className={`rounded-md p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 ${
+                                    adminReviewScores[criterion.id] >= rating
+                                      ? 'text-amber-400'
+                                      : 'text-[#C8C4C0] hover:text-amber-300'
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined block text-[20px] leading-5" aria-hidden="true">star</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
                   <p className="text-[11px] text-[#8A8580]">The candidate will be emailed automatically when you submit this review.</p>
                   <label className="block text-[11px] font-semibold text-[#101010]" htmlFor="admin-review-feedback">Feedback for candidate</label>
                   <textarea
@@ -617,22 +735,22 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     placeholder="Explain why the video is accepted or what needs to change..."
                     className="w-full rounded-lg border border-[#E8E5E1] p-2.5 text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none"
                   />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      onClick={() => handleAdminReview('accepted')}
+                      onClick={() => void handleAdminReview('accepted')}
                       disabled={isSavingAdminReview || !adminFeedback.trim()}
-                      className="py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                      className="w-full rounded-lg bg-emerald-700 py-2 text-xs font-bold text-white disabled:opacity-50 hover:bg-emerald-800"
                     >
-                      {isSavingAdminReview ? 'Saving...' : 'Accept Video'}
+                      {isSavingAdminReview ? 'Saving...' : 'Save Rating & Approve'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleAdminReview('reupload_requested')}
+                      onClick={() => void handleAdminReview('reupload_requested')}
                       disabled={isSavingAdminReview || !adminFeedback.trim()}
-                      className="py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                      className="w-full rounded-lg bg-amber-700 py-2 text-xs font-bold text-white disabled:opacity-50 hover:bg-amber-800"
                     >
-                      {isSavingAdminReview ? 'Saving...' : 'Request Reupload'}
+                      {isSavingAdminReview ? 'Saving...' : 'Request Reupload for This Question'}
                     </button>
                   </div>
                   {submissionError && <p role="alert" className="text-xs font-semibold text-red-700">{submissionError}</p>}
@@ -647,7 +765,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
               <div>
                 <h4 className="font-bold text-xs text-[#101010] mb-1">Standard Evaluation Rubric</h4>
                 <p className="text-xs text-red-900/60">
-                  This rubric is shared across all videos in the submission. Your scores and decision will apply to every video.
+                  Rate this question’s video separately. Scores, decision, and feedback apply only to this video.
                 </p>
               </div>
 
@@ -657,7 +775,9 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     <label htmlFor={`rubric-${criterion.id}`} className="text-xs font-semibold text-[#101010]">
                       {index + 1}. {criterion.name} <span className="text-[#8A8580]">({criterion.weight}%)</span>
                     </label>
-                    <span className="text-xs font-extrabold text-red-600">{scores[criterion.id]} / 5</span>
+                    <span className={`text-xs font-extrabold ${ratedCriteria.includes(criterion.id) ? 'text-red-600' : 'text-amber-700'}`}>
+                      {ratedCriteria.includes(criterion.id) ? `${scores[criterion.id]} / 5` : 'Required'}
+                    </span>
                   </div>
                   <input
                     id={`rubric-${criterion.id}`}
@@ -665,8 +785,11 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                     min={1}
                     max={5}
                     step={1}
-                    value={scores[criterion.id]}
-                    onChange={(e) => setScores((previous) => ({ ...previous, [criterion.id]: Number(e.target.value) }))}
+                    value={scores[criterion.id] || 1}
+                    onChange={(e) => {
+                      setScores((previous) => ({ ...previous, [criterion.id]: Number(e.target.value) }));
+                      setRatedCriteria((previous) => previous.includes(criterion.id) ? previous : [...previous, criterion.id]);
+                    }}
                     className="w-full accent-red-600 cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-[#8A8580] mt-1">
@@ -679,14 +802,19 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
 
               {/* Review Notes */}
               <div>
-                <label className="block text-xs font-semibold text-[#101010] mb-1.5">
-                  Manager / Employer Observations & Feedback
+                <label htmlFor="employer-evaluation-feedback" className="block text-xs font-semibold text-[#101010] mb-1.5">
+                Feedback for this question
                 </label>
                 <textarea
+                  id="employer-evaluation-feedback"
                   rows={3}
+                  required
+                  maxLength={4000}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Record specific strengths, potential concerns, and rationale for your scoring..."
+                  placeholder={decision === 'selected'
+                    ? 'Explain why you recommend recruiting this candidate.'
+                    : 'Explain the specific reasons you recommend rejecting this candidate.'}
                   className="w-full rounded-xl border border-[#E8E5E1] p-3 text-xs text-[#101010] bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all"
                 />
               </div>
@@ -728,11 +856,11 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                 {submissionError && <p role="alert" className="mb-2 text-xs font-semibold text-red-700">{submissionError}</p>}
                 <button
                   type="submit"
-                  disabled={isSubmitting || video.status === 'completed'}
+                  disabled={isSubmitting}
                   className="w-full py-3 bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-red-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
                 >
                   <span className="material-symbols-outlined text-[18px]">verified</span>
-                  {isSubmitting ? 'Recording Evaluation...' : 'Submit Evaluation Score'}
+                  {isSubmitting ? 'Submitting review...' : 'Submit decision and review'}
                 </button>
               </div>
             </form>

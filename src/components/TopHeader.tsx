@@ -9,7 +9,6 @@ interface TopHeaderProps {
   adminNotifications: AdminNotification[];
   onOpenAdminNotification: (notification: AdminNotification) => void;
   onMarkAllAdminNotificationsRead: () => void;
-  onSwitchRole: (role: UserRole) => void;
   onLogout: () => void;
   onOpenSettings: () => void;
   onOpenMobileMenu?: () => void;
@@ -25,7 +24,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   adminNotifications,
   onOpenAdminNotification,
   onMarkAllAdminNotificationsRead,
-  onSwitchRole,
   onLogout,
   onOpenSettings,
   onOpenMobileMenu,
@@ -80,14 +78,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         <button
           id="mobile-menu-toggle-btn"
           onClick={onOpenMobileMenu}
-          className="md:hidden p-2 text-[#101010] hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+          className="md:hidden p-2 text-[#101010] hover:bg-[#F5F2EE] rounded-lg transition-colors cursor-pointer"
           aria-label="Open menu"
         >
           <span className="material-symbols-outlined text-2xl">menu</span>
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-red-900 px-3 py-1 bg-red-50/80 border border-red-200/60 rounded-lg">
+          <span className="text-xs font-bold text-[#101010] px-3 py-1 bg-[#F5F2EE] border border-[#E8E5E1] rounded-lg">
             {pageTitle}
           </span>
         </div>
@@ -96,7 +94,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       {/* Right: Status Indicators + Search + Notifications + Help + Profile Avatar */}
       <div className="flex items-center gap-3 md:gap-5">
         {/* Search */}
-        <div className="relative hidden sm:block">
+        {userRole === 'admin' && <div className="relative hidden sm:block">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-[18px]">
             search
           </span>
@@ -116,17 +114,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               ✕
             </button>
           )}
-        </div>
+        </div>}
 
         {/* Admin notifications */}
         {userRole === 'admin' && <div className="relative">
-          <button
+          {userRole !== 'candidate' && <button
             id="notifications-btn"
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowProfileMenu(false);
             }}
-            className="p-2 text-[#8A8580] hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors relative cursor-pointer"
+            className="p-2 text-[#8A8580] hover:text-red-700 hover:bg-[#F5F2EE] rounded-xl transition-colors relative cursor-pointer"
             title="Notifications"
           >
             <span className="material-symbols-outlined text-xl">notifications</span>
@@ -135,11 +133,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
-          </button>
+          </button>}
 
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white border border-[#E8E5E1] rounded-2xl shadow-xl z-50 p-4 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="flex justify-between items-center pb-3 border-b border-red-100">
+              <div className="flex justify-between items-center pb-3 border-b border-[#E8E5E1]">
                 <h4 className="font-bold text-xs text-red-950 uppercase tracking-wider">Notifications</h4>
                 {unreadCount > 0 && (
                   <button
@@ -160,7 +158,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                     const body = (
                       <>
                         <span className={`material-symbols-outlined mt-0.5 text-xs p-1.5 rounded-lg ${
-                          'isAlert' in notification && notification.isAlert ? 'bg-red-100 text-red-700' : 'bg-red-50 text-red-600'
+                          'isAlert' in notification && notification.isAlert ? 'bg-red-100 text-red-700' : 'bg-[#F5F2EE] text-red-600'
                         }`}>
                           {notification.icon}
                         </span>
@@ -177,14 +175,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                       </>
                     );
                     return (
-                      <div key={notification.id} className="border-b border-red-50 last:border-0">
+                      <div key={notification.id} className="border-b border-[#F1EEEA] last:border-0">
                         <button
                           type="button"
                           onClick={() => {
                             onOpenAdminNotification(notification);
                             setShowNotifications(false);
                           }}
-                          className="flex w-full items-start gap-2.5 py-2.5 text-left hover:bg-red-50/60"
+                          className="flex w-full items-start gap-2.5 py-2.5 text-left hover:bg-[#F5F2EE]"
                         >
                           {body}
                         </button>
@@ -198,14 +196,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>}
 
         {/* Help button */}
-        <button
+        {userRole === 'admin' && <button
           id="help-guide-btn"
           onClick={onOpenHelpModal}
-          className="p-2 text-[#8A8580] hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+          className="p-2 text-[#8A8580] hover:text-red-700 hover:bg-[#F5F2EE] rounded-xl transition-colors cursor-pointer"
           title="Help & Guidelines"
         >
           <span className="material-symbols-outlined text-xl">help_outline</span>
-        </button>
+        </button>}
 
         {/* User Profile Avatar with dropdown */}
         <div className="relative">
@@ -215,7 +213,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               setShowProfileMenu(!showProfileMenu);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-2 p-1 rounded-xl hover:bg-red-50 transition-all cursor-pointer ring-1 ring-[#E8E5E1]"
+            className="flex items-center gap-2 p-1 rounded-xl hover:bg-[#F5F2EE] transition-all cursor-pointer ring-1 ring-[#E8E5E1]"
           >
             <div className="w-8 h-8 rounded-full overflow-hidden border border-red-300 bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white text-xs font-bold shadow-xs">
               {initials}
@@ -224,32 +222,36 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-72 bg-white border border-[#E8E5E1] rounded-2xl shadow-xl z-50 p-2 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="p-3 border-b border-red-100 mb-1 bg-red-50/50 rounded-xl">
-                <p className="text-xs font-bold text-red-950 truncate">{displayName}</p>
-                <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white shadow-xs">
-                  {userRole} mode
-                </span>
+              <div className="p-3 border-b border-[#E8E5E1] mb-1 bg-[#F5F2EE] rounded-xl">
+                <p className="text-xs font-bold text-[#101010] truncate">{displayName}</p>
+                {userRole !== 'candidate' && (
+                  <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#101010] text-white shadow-xs">
+                    {userRole === 'admin' ? 'P2P Admin mode' : 'Manager / Employer mode'}
+                  </span>
+                )}
               </div>
 
-              <div className="py-2 px-3 text-xs space-y-2">
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-red-900/60 font-medium">Session Role:</span>
-                  <span className="font-bold text-[#101010] uppercase tracking-wide">{userRole}</span>
-                </div>
+              {userRole !== 'candidate' && (
+                <div className="py-2 px-3 text-xs space-y-2">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-red-900/60 font-medium">Session Role:</span>
+                    <span className="font-bold text-[#101010] uppercase tracking-wide">{userRole}</span>
+                  </div>
                 <div className="flex justify-between items-center text-[11px]">
                   <span className="text-red-900/60 font-medium">Access Control:</span>
                   <span className="font-semibold text-emerald-700">Link-Verified</span>
                 </div>
-              </div>
+                </div>
+              )}
 
-              <div className="pt-2 mt-1 border-t border-red-100">
+              <div className="pt-2 mt-1 border-t border-[#E8E5E1]">
                 {userRole === 'admin' && (
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);
                       onOpenSettings();
                     }}
-                    className="w-full text-left px-3 py-2 text-xs text-[#101010] hover:bg-red-50 rounded-xl flex items-center gap-2 font-semibold cursor-pointer transition-colors"
+                    className="w-full text-left px-3 py-2 text-xs text-[#101010] hover:bg-[#F5F2EE] rounded-xl flex items-center gap-2 font-semibold cursor-pointer transition-colors"
                   >
                     <span className="material-symbols-outlined text-base">settings</span>
                     Settings
@@ -260,10 +262,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                     setShowProfileMenu(false);
                     onLogout();
                   }}
-                  className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-colors"
+                  className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-[#F5F2EE] rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-base">logout</span>
-                  Sign Out / Switch Portal
+                  Sign Out
                 </button>
               </div>
             </div>

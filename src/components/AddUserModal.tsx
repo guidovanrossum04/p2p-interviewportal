@@ -20,14 +20,18 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, initialRole
   const [role, setRole] = useState<Exclude<UserRole, 'admin'>>(initialRole);
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email) return;
     setIsSubmitting(true);
+    setSubmissionError(null);
     try {
       await onAddUser({ name, email, role, department: '', title: '', phone });
       onClose();
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'Could not create this user.');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,6 +97,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, initialRole
               className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none"
             />
           </div>
+
+          {submissionError && (
+            <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
+              {submissionError}
+            </p>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <button

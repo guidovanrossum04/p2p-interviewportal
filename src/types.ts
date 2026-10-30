@@ -37,6 +37,12 @@ export interface CandidateEvaluation {
   aiSummary?: string;
   keyStrengths?: string[];
   areasToImprove?: string[];
+  candidateName?: string;
+  candidateEmail?: string;
+  roleApplied?: string;
+  questionPrompt?: string;
+  videoId?: string;
+  submissionId?: string;
 }
 
 export interface CandidateDocument {
@@ -78,6 +84,8 @@ export interface CandidateVideo {
   wasReuploaded?: boolean;
   previousAdminFeedback?: string;
   adminFeedback?: string;
+  adminReviewScores?: Record<string, number>;
+  adminOverallRating?: number;
   experienceYears?: number;
   resumeUrl?: string;
   documents?: CandidateDocument[];
@@ -161,6 +169,8 @@ export interface RubricWeight {
 
 export type InviteType = 'candidate' | 'evaluator';
 
+export type CandidateAnswerMode = 'upload' | 'record';
+
 export interface InviteLink {
   id: string;
   token: string;
@@ -180,6 +190,10 @@ export interface InviteLink {
   expiresInHours: number;
   createdBy: string;
   notes?: string;
+  answerMode?: CandidateAnswerMode;
+  videoCount?: number;
+  questionPrompt?: string;
+  questionPrompts?: string[];
   url?: string;
   accessCount?: number;
   emailSent?: boolean;

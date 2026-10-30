@@ -9,9 +9,18 @@ import { PortalRepository, ShareLinkRecord } from '../repositories/PortalReposit
 import { PortalError, PortalService } from '../services/PortalService';
 import { EmailService } from '../services/EmailService';
 import { publishAdminNotification } from '../services/AdminNotificationHub';
+import { adminReviewRubric } from '../../data/adminReviewRubric';
+import { CandidateVideo } from '../../types';
 
 const storageDirectory = path.resolve(process.cwd(), 'storage', 'videos');
 mkdirSync(storageDirectory, { recursive: true });
+
+const stripCandidatePrivateFields = ({
+  documents: _documents,
+  adminReviewScores: _adminReviewScores,
+  adminOverallRating: _adminOverallRating,
+  ...video
+}: CandidateVideo) => video;
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -222,12 +231,17 @@ export function createPortalRouter(): Router {
 
   router.post('/videos/:id/review', async (request, response, next) => {
     try {
-      const { decision, feedback = '' } = request.body || {};
+      const { decision, feedback = '', scores } = request.body || {};
       if (decision !== 'accepted' && decision !== 'reupload_requested') throw new PortalError('Choose accept or request reupload.');
       if (typeof feedback !== 'string' || !feedback.trim() || feedback.length > 4000) {
         throw new PortalError('Enter feedback (maximum 4000 characters) before submitting this review.');
       }
-      const video = await repository.reviewVideo(request.params.id, decision, feedback.trim());
+      if (!scores || typeof scores !== 'object' || Array.isArray(scores)
+        || Object.keys(scores).length !== adminReviewRubric.length
+        || adminReviewRubric.some((criterion) => !Number.isInteger(scores[criterion.id]) || scores[criterion.id] < 1 || scores[criterion.id] > 5)) {
+        throw new PortalError('Rate every review criterion from 1 to 5 before saving.');
+      }
+      const video = await repository.reviewVideo(request.params.id, decision, feedback.trim(), scores as Record<string, number>);
       if (!video) return response.status(404).json({ error: 'Video not found.' });
       const emailNotice = await attemptEmail('Could not email candidate after admin review', () =>
         emailService.sendCandidateReview(video, decision, feedback.trim()));
@@ -290,23 +304,86 @@ export function createPortalRouter(): Router {
     } catch (error) { next(error); }
   });
 
-  router.post('/invites', async (request, response, next) => {
+  router.post('/invites', upload.fields([{ name: 'adminSupportingDocuments', maxCount: 20 }]), async (request, response, next) => {
+    const uploadedDocuments = (request.files as { adminSupportingDocuments?: Express.Multer.File[] } | undefined)?.adminSupportingDocuments || [];
     try {
-      const { type, recipientName, recipientEmail = '', roleApplied = '', department = '', assignedVideoId, expiresAt, notes = '', createdBy = '' } = request.body;
+      const {
+        type,
+        recipientName,
+        recipientEmail = '',
+        roleApplied = '',
+        department = '',
+        assignedVideoId,
+        expiresAt,
+        notes = '',
+        createdBy = '',
+        answerMode,
+        videoCount,
+        questionPrompt,
+        questionPrompts,
+      } = request.body;
       if (type !== 'candidate' && type !== 'evaluator') throw new PortalError('Link type must be candidate or evaluator.');
-      const invite = await service.createInvite({ type, recipientName: String(recipientName || ''), recipientEmail: String(recipientEmail), roleApplied: String(roleApplied), department: String(department), assignedVideoId, expiresAt: String(expiresAt || ''), notes: String(notes), createdBy: String(createdBy) });
+      if (type !== 'evaluator' && uploadedDocuments.length > 0) {
+        throw new PortalError('Supporting documents can only be attached to a Manager / Employer review link.');
+      }
+      if (uploadedDocuments.some((document) => document.size > 25 * 1024 * 1024)) {
+        throw new PortalError('Each supporting document must be 25 MB or smaller.');
+      }
+      let parsedQuestionPrompts: unknown = questionPrompts;
+      if (typeof questionPrompts === 'string') {
+        try {
+          parsedQuestionPrompts = JSON.parse(questionPrompts);
+        } catch {
+          throw new PortalError('The selected interview questions are invalid.');
+        }
+      }
+      const invite = await service.createInvite({
+        type,
+        recipientName: String(recipientName || ''),
+        recipientEmail: String(recipientEmail),
+        roleApplied: String(roleApplied),
+        department: String(department),
+        assignedVideoId,
+        expiresAt: String(expiresAt || ''),
+        notes: String(notes),
+        createdBy: String(createdBy),
+        answerMode: answerMode === 'record' ? 'record' : 'upload',
+        videoCount: Number(videoCount) || undefined,
+        questionPrompt: typeof questionPrompt === 'string' ? questionPrompt : undefined,
+        questionPrompts: Array.isArray(parsedQuestionPrompts) ? parsedQuestionPrompts.filter((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim())) : undefined,
+        adminSupportingDocuments: uploadedDocuments.map((file) => ({
+          id: randomUUID(),
+          filePath: path.relative(process.cwd(), file.path),
+          originalFilename: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+        })),
+      });
       const origin = process.env.APP_URL || `${request.protocol}://${request.get('host')}`;
       const emailNotice = await attemptEmail(`Could not email ${invite.type} invitation`, () =>
         emailService.sendInvite(invite, `${origin}/?portal=${invite.type}&token=${encodeURIComponent(invite.token)}`));
       response.status(201).json({ ...invite, emailSent: !emailNotice, emailNotice });
-    } catch (error) { next(error); }
+    } catch (error) {
+      await Promise.all(uploadedDocuments.map((file) => unlink(file.path).catch(() => undefined)));
+      next(error);
+    }
   });
 
   router.get('/invites/validate/:token', async (request, response, next) => {
     try {
       response.setHeader('Cache-Control', 'no-store');
       const result = await service.validateInvite(request.params.token);
-      response.json({ valid: true, invite: result.invite, video: result.video, videos: result.videos, uploadLinks: result.uploadLinks });
+      const videos = result.invite.type === 'candidate'
+        ? result.videos.map(stripCandidatePrivateFields)
+        : result.videos;
+      response.json({
+        valid: true,
+        invite: result.invite,
+        video: result.video
+          ? result.invite.type === 'candidate' ? stripCandidatePrivateFields(result.video) : result.videos.find((item) => item.id === result.video?.id) || result.video
+          : null,
+        videos,
+      });
     } catch (error) { next(error); }
   });
 
@@ -365,27 +442,46 @@ export function createPortalRouter(): Router {
     } catch (error) { next(error); }
   });
 
+  router.get('/public/links/:token/documents/:videoId/:documentId', authorizeLink('review'), async (request, response, next) => {
+    try {
+      const link = response.locals.shareLink as ShareLinkRecord;
+      const assignedVideos = await repository.getAssignedVideos(link);
+      if (!assignedVideos.some((video) => video.id === request.params.videoId)) {
+        throw new PortalError('This document is not part of your assigned submission.', 403);
+      }
+      const file = await repository.getVideoDocument(request.params.videoId, request.params.documentId);
+      if (!file) return response.status(404).json({ error: 'Document not found.' });
+      const disposition = request.query.download === '1' ? 'attachment' : 'inline';
+      response.type(file.mimeType);
+      response.setHeader('Content-Disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(file.filename)}`);
+      response.sendFile(path.resolve(file.filePath));
+    } catch (error) { next(error); }
+  });
+
   router.post('/public/links/:token/upload', authorizeLink('upload'), upload.fields([
     { name: 'videos', maxCount: 6 },
-    { name: 'documents', maxCount: 20 },
   ]), async (request, response, next) => {
-    const uploadedFiles = request.files as { videos?: Express.Multer.File[]; documents?: Express.Multer.File[] } | undefined;
+    const uploadedFiles = request.files as { videos?: Express.Multer.File[] } | undefined;
     try {
+      const shareLink = response.locals.shareLink as ShareLinkRecord | undefined;
       const videos = uploadedFiles?.videos || [];
-      const documents = uploadedFiles?.documents || [];
-      if (videos.length !== 6) throw new PortalError('Submit one video response for each of the six questions.');
-      if (documents.some((document) => document.size > 25 * 1024 * 1024)) {
-        throw new PortalError('Each supporting document must be 25 MB or smaller.');
+      const requestedAnswerMode = String(request.body.answerMode || '');
+      if (requestedAnswerMode !== shareLink?.answer_mode) {
+        throw new PortalError('Use the submission method selected for this link.');
+      }
+      const requiredVideoCount = Math.max(1, Number(shareLink?.video_count || 1));
+      if (videos.length !== requiredVideoCount) {
+        throw new PortalError(`Submit ${requiredVideoCount} video response${requiredVideoCount === 1 ? '' : 's'} for this link.`);
       }
       let questionPrompts: unknown;
       try {
         questionPrompts = JSON.parse(String(request.body.questionPrompts || ''));
       } catch {
-        throw new PortalError('The six interview questions are missing. Reload the page and try again.');
+        throw new PortalError('The interview question details are missing. Reload the page and try again.');
       }
-      if (!Array.isArray(questionPrompts) || questionPrompts.length !== videos.length
+      if (!Array.isArray(questionPrompts) || questionPrompts.length !== requiredVideoCount
         || !questionPrompts.every((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim()))) {
-        throw new PortalError('Submit one video response for each of the six questions.');
+        throw new PortalError(`Submit ${requiredVideoCount} video response${requiredVideoCount === 1 ? '' : 's'} for this link.`);
       }
       const keySkills = String(request.body.keySkills || '').split(',').map((value) => value.trim()).filter(Boolean);
       const result = await service.uploadCandidate(request.params.token, {
@@ -402,13 +498,7 @@ export function createPortalRouter(): Router {
           mimeType: file.mimetype,
           questionPrompt: questionPrompts[index],
         })),
-        documents: documents.map((file) => ({
-          id: randomUUID(),
-          filePath: path.relative(process.cwd(), file.path),
-          originalFilename: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-        })),
+        documents: [],
       });
       const firstVideo = result[0];
       if (firstVideo) {
@@ -438,7 +528,6 @@ export function createPortalRouter(): Router {
     } catch (error) {
       await Promise.all([
         ...(uploadedFiles?.videos || []),
-        ...(uploadedFiles?.documents || []),
       ].map((file) => unlink(file.path).catch(() => undefined)));
       next(error);
     }
@@ -446,17 +535,18 @@ export function createPortalRouter(): Router {
 
   router.post('/public/links/:token/reupload/:videoId', authorizeLink('upload'), upload.fields([
     { name: 'videos', maxCount: 1 },
-    { name: 'documents', maxCount: 20 },
   ]), async (request, response, next) => {
-    const uploadedFiles = request.files as { videos?: Express.Multer.File[]; documents?: Express.Multer.File[] } | undefined;
+    const uploadedFiles = request.files as { videos?: Express.Multer.File[] } | undefined;
     try {
       const videos = uploadedFiles?.videos || [];
-      const documents = uploadedFiles?.documents || [];
+      const shareLink = response.locals.shareLink as ShareLinkRecord | undefined;
+      if (String(request.body.answerMode || '') !== shareLink?.answer_mode) {
+        throw new PortalError('Use the submission method selected for this link.');
+      }
       if (videos.length !== 1) throw new PortalError('Select one replacement video.');
-      if (documents.some((document) => document.size > 25 * 1024 * 1024)) throw new PortalError('Each supporting document must be 25 MB or smaller.');
       const result = await service.reuploadCandidateVideo(request.params.token, request.params.videoId, {
         videos: videos.map((file) => ({ filePath: path.relative(process.cwd(), file.path), originalFilename: file.originalname, mimeType: file.mimetype })),
-        documents: documents.map((file) => ({ id: randomUUID(), filePath: path.relative(process.cwd(), file.path), originalFilename: file.originalname, mimeType: file.mimetype, size: file.size })),
+        documents: [],
       });
       const submissionId = result.submissionId || result.submissionBatchId || result.id;
       publishAdminNotification({
@@ -475,9 +565,9 @@ export function createPortalRouter(): Router {
         await attemptEmail('Could not notify admin of candidate reupload', () =>
           emailService.sendAdminSubmissionUpdated(result, `${origin}/`)),
       ].filter(Boolean);
-      response.json({ video: result, emailNotice: emailNotices.join(' ') });
+      response.json({ video: stripCandidatePrivateFields(result), emailNotice: emailNotices.join(' ') });
     } catch (error) {
-      await Promise.all([...(uploadedFiles?.videos || []), ...(uploadedFiles?.documents || [])].map((file) => unlink(file.path).catch(() => undefined)));
+      await Promise.all((uploadedFiles?.videos || []).map((file) => unlink(file.path).catch(() => undefined)));
       next(error);
     }
   });

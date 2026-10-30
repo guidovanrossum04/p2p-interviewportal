@@ -60,14 +60,16 @@ export class EmailService {
     const recipientName = escapeHtml(invite.recipientName);
     const position = escapeHtml(invite.roleApplied || 'Candidate review');
     const safeUrl = escapeHtml(linkUrl);
-    const action = candidateInvite ? 'submit your video and supporting documents' : 'review the assigned candidate submission';
+    const action = candidateInvite
+      ? invite.answerMode === 'record' ? 'record your requested video responses' : 'upload your requested video responses'
+      : 'review the assigned candidate submission';
     const subject = candidateInvite ? `Video submission link: ${invite.roleApplied || 'Candidate role'}` : `Candidate review assignment: ${invite.roleApplied || 'Review'}`;
 
     await this.send(invite.recipientEmail, subject, `
       <h1 style="font-size:22px;color:#101010;margin:0 0 16px">You have a secure invitation</h1>
       <p>Hello ${recipientName},</p>
       <p>You have been invited to ${action} for <strong>${position}</strong>.</p>
-      ${this.actionButton(linkUrl, candidateInvite ? 'Open upload portal' : 'Open review assignment')}
+      ${this.actionButton(linkUrl, candidateInvite ? invite.answerMode === 'record' ? 'Open recording portal' : 'Open upload portal' : 'Open review assignment')}
       <p style="font-size:12px;color:#8A8580">This secure link expires at ${escapeHtml(new Date(invite.expiresAt).toLocaleString())}.</p>
       <p style="font-size:12px;color:#8A8580;word-break:break-all">If the button does not work, copy this link:<br>${safeUrl}</p>
       <p>If you were not expecting this message, you can ignore it.</p>

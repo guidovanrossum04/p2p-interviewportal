@@ -21,7 +21,7 @@ import {
   initialSettings,
   initialInviteLinks,
 } from './data/mockData';
-import { GENERIC_AVATAR, GENERIC_VIDEO_THUMBNAIL } from './data/placeholders';
+import { GENERIC_AVATAR } from './data/placeholders';
 
 // Components
 import { AuthScreen } from './components/AuthScreen';
@@ -41,7 +41,6 @@ import { InviteLinksView } from './components/InviteLinksView';
 
 // Modals
 import { VideoPlayerEvaluationModal } from './components/VideoPlayerEvaluationModal';
-import { BatchUploadModal } from './components/BatchUploadModal';
 import { NewAssignmentModal } from './components/NewAssignmentModal';
 import { AddUserModal } from './components/AddUserModal';
 import { ReportModal } from './components/ReportModal';
@@ -104,7 +103,6 @@ export default function App() {
   const [focusedSubmissionId, setFocusedSubmissionId] = useState('');
   const [settings, setSettings] = useState<SystemSettings>(initialSettings);
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>(initialInviteLinks);
-  const [candidateUploadLinks, setCandidateUploadLinks] = useState<InviteLink[]>([]);
   const [invitePage, setInvitePage] = useState(1);
   const [inviteTotal, setInviteTotal] = useState(0);
   const [invitePageSize] = useState(10);
@@ -115,7 +113,6 @@ export default function App() {
 
   // Modals
   const [selectedVideoForEval, setSelectedVideoForEval] = useState<CandidateVideo | null>(null);
-  const [showBatchUploadModal, setShowBatchUploadModal] = useState<boolean>(false);
   const [showNewAssignmentModal, setShowNewAssignmentModal] = useState<boolean>(false);
   const [assignmentDefaultVideoId, setAssignmentDefaultVideoId] = useState<string | undefined>();
   const [showAddUserModal, setShowAddUserModal] = useState<boolean>(false);
@@ -351,7 +348,6 @@ export default function App() {
         const video = data.video as CandidateVideo | null;
         const submissionVideos = Array.isArray(data.videos) ? data.videos as CandidateVideo[] : video ? [video] : [];
         setVideos(submissionVideos);
-        setCandidateUploadLinks(Array.isArray(data.uploadLinks) ? data.uploadLinks : [data.invite]);
         applyInviteDirectAccess(data.invite, video);
       })
       .catch((error: Error) => {
@@ -440,12 +436,24 @@ export default function App() {
     assignedVideoId?: string;
     expiresAt: string;
     notes?: string;
+    answerMode?: 'upload' | 'record';
+    videoCount?: number;
+    questionPrompt?: string;
+    questionPrompts?: string[];
+    adminSupportingDocuments?: File[];
   }): Promise<InviteLink> => {
     try {
+      const { adminSupportingDocuments = [], ...invitePayload } = inviteData;
+      const formData = new FormData();
+      Object.entries({ ...invitePayload, createdBy: currentUser.name }).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
+        }
+      });
+      adminSupportingDocuments.forEach((file) => formData.append('adminSupportingDocuments', file));
       const res = await fetch('/api/invites', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...inviteData, createdBy: currentUser.name }),
+        body: formData,
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Could not create the share link.');
@@ -504,34 +512,8 @@ export default function App() {
       : result.emailSent ? 'Link expiry extended and recipient notified.' : 'Link expiry extended.');
   };
 
-  // 1-Click Test Link: Directly opens Candidate Upload or Evaluator Review (No login needed!)
-  const handleTestLink = (invite: InviteLink) => {
-    applyInviteDirectAccess(invite);
-  };
-
-  // Switch role handler (Top header switcher)
-  const handleSwitchRole = (role: UserRole) => {
-    setUserRole(role);
-    if (role === 'admin') {
-      const adminUser = users.find((u) => u.role === 'admin') || initialUsers[2];
-      setCurrentUser(adminUser);
-      setCurrentTab('overview');
-      showToast('Switched to Administrator Mode');
-    } else if (role === 'evaluator') {
-      const evaluatorUser = users.find((u) => u.role === 'evaluator') || initialUsers[0];
-      setCurrentUser(evaluatorUser);
-      setCurrentTab('dashboard');
-      showToast('Switched to Evaluator Mode');
-    } else {
-      const candidateUser = users.find((u) => u.role === 'candidate') || initialUsers[4];
-      setCurrentUser(candidateUser);
-      setCurrentTab('candidate_hub');
-      showToast('Switched to Candidate Mode');
-    }
-  };
-
   // Candidate uploads new self-introduction video
-  const handleUploadNewVideos = (newVideos: CandidateVideo[], emailNotice = '') => {
+  const handleUploadNewVideos = (newVideos: CandidateVideo[]) => {
     const existingIds = new Set(videos.map((video) => video.id));
     const newlyCreatedCount = newVideos.filter((video) => !existingIds.has(video.id)).length;
     setVideos((previous) => {
@@ -563,9 +545,6 @@ export default function App() {
       pendingAssignments: prev.pendingAssignments + newlyCreatedCount,
     }));
 
-    showToast(emailNotice
-      ? `Upload received, but notification email failed: ${emailNotice}`
-      : 'Upload received and confirmation email sent.');
   };
 
   // Evaluation submission
@@ -663,62 +642,6 @@ export default function App() {
     }
   };
 
-  // Batch Video Upload
-  const handleBatchSubmit = async (batchData: {
-    batchName: string;
-    roleApplied: string;
-    department: string;
-    assignedEvaluatorId: string;
-    candidates: { name: string; email: string }[];
-  }) => {
-    try {
-      const res = await fetch('/api/videos/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(batchData),
-      });
-
-      if (res.ok) {
-        const result = await res.json();
-        if (result.addedVideos) {
-          setVideos((prev) => [...result.addedVideos, ...prev]);
-        }
-      } else {
-        // Local fallback
-        const newVids: CandidateVideo[] = batchData.candidates.map((c, i) => ({
-          id: `vid-batch-${Date.now()}-${i}`,
-          candidateName: c.name,
-          candidateEmail: c.email,
-          roleApplied: batchData.roleApplied,
-          department: batchData.department,
-          submittedAt: new Date().toISOString(),
-          submittedTimeAgo: 'Just now',
-          status: 'pending',
-          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-          thumbnailUrl: GENERIC_VIDEO_THUMBNAIL,
-          durationSeconds: 300,
-          videoDuration: '05:00',
-          batchName: batchData.batchName,
-          assignedEvaluatorId: batchData.assignedEvaluatorId,
-          assignedEvaluatorName:
-            users.find((u) => u.id === batchData.assignedEvaluatorId)?.name || 'Sarah Jenkins',
-        }));
-        setVideos((prev) => [...newVids, ...prev]);
-      }
-
-      setStats((prev) => ({
-        ...prev,
-        videosUploaded: prev.videosUploaded + batchData.candidates.length,
-        pendingAssignments: prev.pendingAssignments + batchData.candidates.length,
-      }));
-
-      showToast(`Batch "${batchData.batchName}" (${batchData.candidates.length} candidates) ingested successfully!`);
-    } catch (e) {
-      console.error('Batch upload error', e);
-      showToast('Batch created in workspace.');
-    }
-  };
-
   // Add User
   const handleAddUser = async (newUserData: {
     name: string;
@@ -735,34 +658,19 @@ export default function App() {
         body: JSON.stringify(newUserData),
       });
 
-      if (res.ok) {
-        const result = await res.json();
-        if (result.user) {
-          setUsers((prev) => [result.user, ...prev]);
-        }
-      } else {
-        const newUser: User = {
-          id: `usr-${Date.now()}`,
-          name: newUserData.name,
-          email: newUserData.email,
-          role: newUserData.role,
-          department: newUserData.department,
-          title: newUserData.title,
-          phone: newUserData.phone,
-          status: 'active',
-          avatar: GENERIC_AVATAR,
-          lastActive: 'Just now',
-          assignedCount: 0,
-          completedCount: 0,
-        };
-        setUsers((prev) => [newUser, ...prev]);
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Could not create this user.');
+      const createdUser: User = result.user || result;
+      if (!createdUser.id || !createdUser.name || !createdUser.email || !createdUser.role) {
+        throw new Error('The server created the account but returned incomplete user details. Refresh the directory.');
       }
+      setUsers((previous) => [createdUser, ...previous.filter((user) => user.id !== createdUser.id)]);
 
       setStats((prev) => ({ ...prev, totalUsers: prev.totalUsers + 1 }));
       showToast(`User ${newUserData.name} registered as ${newUserData.role}`);
-    } catch (e) {
-      console.error('Add user error', e);
-      showToast('User created locally.');
+    } catch (error) {
+      console.error('Add user error', error);
+      throw error;
     }
   };
 
@@ -814,11 +722,16 @@ export default function App() {
     setAssignmentRefreshKey((current) => current + 1);
   };
 
-  const handleReviewVideo = async (videoId: string, decision: 'accepted' | 'reupload_requested', feedback: string): Promise<CandidateVideo> => {
+  const handleReviewVideo = async (
+    videoId: string,
+    decision: 'accepted' | 'reupload_requested',
+    feedback: string,
+    scores: Record<string, number>,
+  ): Promise<CandidateVideo> => {
     const response = await fetch(`/api/videos/${encodeURIComponent(videoId)}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ decision, feedback }),
+      body: JSON.stringify({ decision, feedback, scores }),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Could not save this review.');
@@ -981,9 +894,9 @@ export default function App() {
             <div className="flex justify-between items-center pb-4 border-b border-[#E8E5E1] mb-4">
               <div className="flex items-center gap-2.5">
                 <img src={p2pLogo} alt="" className="w-8 h-8 object-contain" />
-                <span className="font-bold text-[#101010] text-sm tracking-tight">Interview<span className="text-red-600">Pro</span></span>
+                <span className="font-bold text-[#101010] text-sm tracking-tight">Interview<span className="text-[#101010]">Pro</span></span>
               </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="text-[#8A8580] hover:text-red-700 cursor-pointer">
+              <button onClick={() => setMobileMenuOpen(false)} className="text-[#101010] cursor-pointer">
                 <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
@@ -997,7 +910,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'candidate_hub' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                      currentTab === 'candidate_hub' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">video_library</span> My Submissions
@@ -1008,7 +921,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'guidelines' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                      currentTab === 'guidelines' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">help_outline</span> Prep &amp; Guidelines
@@ -1022,7 +935,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'overview' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                      currentTab === 'overview' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">dashboard</span> Overview
@@ -1033,7 +946,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'links' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                      currentTab === 'links' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">link</span> Shareable Links
@@ -1044,7 +957,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'users' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                      currentTab === 'users' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">group</span> User &amp; Roles
@@ -1055,7 +968,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'videos' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                      currentTab === 'videos' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">video_library</span> Submissions
@@ -1069,7 +982,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'dashboard' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                      currentTab === 'dashboard' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">dashboard</span> Dashboard
@@ -1083,7 +996,7 @@ export default function App() {
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    currentTab === 'settings' ? 'bg-red-50 text-red-700 font-bold border border-red-100' : 'text-[#8A8580] hover:text-[#101010] hover:bg-red-50/50'
+                    currentTab === 'settings' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
                   }`}
                 >
                   <span className="material-symbols-outlined text-base">settings</span> Settings
@@ -1096,25 +1009,6 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col md:ml-64 min-w-0">
-        {/* Zero-Login Link Session Banner (Active when in Candidate or Evaluator mode or via link) */}
-        {activeInvite && (
-          <div className="bg-[#101010] text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 border-b border-red-900/40 shadow-xs animate-in fade-in duration-200">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm text-red-500">vpn_key</span>
-              <span>
-                <strong>Verified Direct Link Session:</strong> {currentUser.name} (
-                {userRole === 'candidate' ? 'User / Video Upload Portal' : 'Evaluator Assessment Portal'})
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
-                No Login Required
-              </span>
-              <span className="text-red-200/80 font-mono text-[10px] hidden sm:inline">
-                Token: {activeInvite.token}
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Top Header */}
         <TopHeader
           userRole={userRole}
@@ -1124,7 +1018,6 @@ export default function App() {
           adminNotifications={adminNotifications}
           onOpenAdminNotification={handleOpenAdminNotification}
           onMarkAllAdminNotificationsRead={handleMarkAllAdminNotificationsRead}
-          onSwitchRole={handleSwitchRole}
           onLogout={handleLogout}
           onOpenSettings={() => setCurrentTab('settings')}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
@@ -1158,9 +1051,7 @@ export default function App() {
             <CandidatePortalView
               currentUser={currentUser}
               videos={videos}
-              uploadLinks={candidateUploadLinks.length > 0
-                ? candidateUploadLinks
-                : activeInvite?.type === 'candidate' ? [activeInvite] : []}
+              uploadLinks={activeInvite?.type === 'candidate' ? [activeInvite] : []}
               onUploadNewVideos={handleUploadNewVideos}
               canCreateSubmission={activeInvite?.status === 'active' && new Date(activeInvite.expiresAt) > new Date()}
               linkToken={activeInvite?.type === 'candidate' ? activeInvite.token : undefined}
@@ -1206,7 +1097,6 @@ export default function App() {
             <AllVideosView
               videos={videos}
               onSelectCandidateVideo={(video) => setSelectedVideoForEval(video)}
-              onOpenUploadBatch={() => setShowBatchUploadModal(true)}
               searchQuery={searchQuery}
             />
           ) : userRole === 'admin' && currentTab === 'users' ? (
@@ -1266,16 +1156,6 @@ export default function App() {
           defaultType={createInviteDefaultType}
           onClose={() => setShowCreateInviteModal(false)}
           onCreateInvite={handleCreateInvite}
-          onTestLink={handleTestLink}
-        />
-      )}
-
-      {/* Batch Upload Modal */}
-      {showBatchUploadModal && (
-        <BatchUploadModal
-          evaluators={evaluators}
-          onClose={() => setShowBatchUploadModal(false)}
-          onBatchSubmit={handleBatchSubmit}
         />
       )}
 

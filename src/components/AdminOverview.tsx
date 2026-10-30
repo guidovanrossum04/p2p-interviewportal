@@ -70,21 +70,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         </div>
       )}
       {/* Admin Link Generation & Access Hub Banner */}
-      <div className="bg-gradient-to-r from-red-600 via-rose-700 to-red-700 rounded-2xl p-6 text-white shadow-md shadow-red-500/20 space-y-4">
+      <div className="bg-[#D81F27] rounded-2xl p-6 text-white shadow-md border border-black/10 space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="space-y-1.5 max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-[11px] font-bold tracking-wide uppercase text-white backdrop-blur-xs">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-[11px] font-bold tracking-wide uppercase text-white">
               <span className="material-symbols-outlined text-xs">vpn_key</span>
-              <span>Admin Anbin • Access Governance</span>
+              <span>Admin Anbin</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">Generate & Share Access Links</h2>
-            <p className="text-xs text-red-100 leading-relaxed">
-              Generate direct invitation links to share with <strong>Users (Candidates) to upload videos</strong> and{' '}
-              <strong>Managers / Employers to grade submissions</strong>. 
-              <span className="font-bold text-white bg-red-800/60 px-1.5 py-0.5 rounded ml-1">
-                Zero Login Barrier: No separate login or password required for recipients!
-              </span>
-            </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -109,15 +102,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
 
         {/* 2 Primary Link Generation CTA Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-white/20">
-          <div className="bg-white/10 backdrop-blur-xs p-4 rounded-xl border border-white/15 flex items-center justify-between gap-3">
+          <div className="bg-black/10 p-4 rounded-xl border border-white/15 flex items-center justify-between gap-3">
             <div className="space-y-0.5">
               <div className="flex items-center gap-1.5 font-bold text-sm text-white">
-                <span className="material-symbols-outlined text-base text-rose-200">video_camera_front</span>
+                <span className="material-symbols-outlined text-base text-white">video_camera_front</span>
                 <span>User (Candidate) Video Upload Link</span>
               </div>
-              <p className="text-[11px] text-red-100/90">
-                Candidate opens link & directly records/uploads self-intro video. No login needed.
-              </p>
             </div>
             <button
               type="button"
@@ -135,9 +125,6 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                 <span className="material-symbols-outlined text-base text-rose-200">rate_review</span>
                 <span>Manager / Employer Assessment Link</span>
               </div>
-              <p className="text-[11px] text-red-100/90">
-                Manager / Employer opens the link to review the assigned candidate video.
-              </p>
             </div>
             <button
               type="button"
@@ -160,7 +147,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         >
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-xs font-bold text-red-900/60 uppercase tracking-wider">Total Users</p>
+              <p className="text-xs font-bold text-black-900/60 uppercase tracking-wider">Total Users</p>
               <h3 className="text-3xl font-extrabold text-[#101010] mt-2 tracking-tight">
                 {stats.totalUsers.toLocaleString()}
               </h3>
@@ -182,7 +169,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         >
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-xs font-bold text-red-900/60 uppercase tracking-wider">Videos Uploaded</p>
+              <p className="text-xs font-bold text-black-900/60 uppercase tracking-wider">Videos Uploaded</p>
               <h3 className="text-3xl font-extrabold text-[#101010] mt-2 tracking-tight">
                 {stats.videosUploaded.toLocaleString()}
               </h3>
@@ -204,7 +191,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         >
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-xs font-bold text-red-900/60 uppercase tracking-wider">Pending Queue</p>
+              <p className="text-xs font-bold text-black-900/60 uppercase tracking-wider">Pending Queue</p>
               <h3 className="text-3xl font-extrabold text-red-600 mt-2 tracking-tight">
                 {stats.pendingAssignments.toLocaleString()}
               </h3>
@@ -226,7 +213,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         >
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-xs font-bold text-red-900/60 uppercase tracking-wider">Completed Evals</p>
+              <p className="text-xs font-bold text-black-900/60 uppercase tracking-wider">Completed Evals</p>
               <h3 className="text-3xl font-extrabold text-[#101010] mt-2 tracking-tight">
                 {stats.completedEvals.toLocaleString()}
               </h3>
@@ -249,7 +236,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
           <section className="bg-white border border-[#E8E5E1] rounded-2xl p-6 shadow-xs">
             <div className="mb-5">
               <h3 className="text-base font-bold text-[#101010]">Submission Status</h3>
-              <p className="text-xs text-red-900/60 mt-0.5">Pending versus completed candidate videos</p>
+              <p className="text-xs text-black-900/60 mt-0.5">Pending versus completed candidate videos</p>
             </div>
 
             <div className="space-y-4" role="img" aria-label={`${pendingCount} pending videos and ${completedCount} completed videos`}>
@@ -262,7 +249,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                     <span className="font-semibold text-[#101010]">{item.label}</span>
                     <span className="font-mono font-bold text-[#101010]">{item.count}</span>
                   </div>
-                  <div className="w-full h-3 rounded-full bg-[#F3F4F6] overflow-hidden">
+                  <div className="w-full h-3 rounded-full bg-[#F5F2EE] overflow-hidden">
                     <div
                       className={`${item.color} h-full rounded-full transition-all duration-500`}
                       style={{ width: `${(item.count / maxEvaluationCount) * 100}%` }}
@@ -278,7 +265,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
               <div className="p-5 border-b border-[#E8E5E1] flex justify-between items-center gap-3">
                 <div>
                   <h3 className="text-base font-bold text-[#101010]">Recent Uploads</h3>
-                  <p className="text-xs text-red-900/60 mt-0.5">Latest candidate video submissions</p>
+                  <p className="text-xs text-black-900/60 mt-0.5">Latest candidate video submissions</p>
                 </div>
                 <button
                   type="button"
@@ -322,7 +309,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
             <section className="bg-white border border-[#E8E5E1] rounded-2xl shadow-xs overflow-hidden">
               <div className="p-5 border-b border-[#E8E5E1]">
                 <h3 className="text-base font-bold text-[#101010]">Recent Evaluation Results</h3>
-                <p className="text-xs text-red-900/60 mt-0.5">Latest submitted evaluator decisions</p>
+                <p className="text-xs text-black-900/60 mt-0.5">Latest submitted evaluator decisions</p>
               </div>
               {recentEvaluationResults.length === 0 ? (
                 <p className="px-5 py-8 text-center text-xs text-[#8A8580]">No evaluation results yet.</p>

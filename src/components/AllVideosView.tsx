@@ -6,19 +6,18 @@ import { groupVideosBySubmission } from '../utils/submissions';
 interface AllVideosViewProps {
   videos: CandidateVideo[];
   onSelectCandidateVideo: (video: CandidateVideo) => void;
-  onOpenUploadBatch: () => void;
   searchQuery: string;
 }
 
 export const AllVideosView: React.FC<AllVideosViewProps> = ({
   videos,
   onSelectCandidateVideo,
-  onOpenUploadBatch,
   searchQuery,
 }) => {
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'in_review' | 'completed' | 'awaiting_admin' | 'admin_confirmed'>('all');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
   const [submissionVideos, setSubmissionVideos] = useState<CandidateVideo[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -113,13 +112,6 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
             </button>
           </div>
 
-          <button
-            onClick={onOpenUploadBatch}
-            className="bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm shadow-red-500/20 shrink-0 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
-            Upload New Batch
-          </button>
         </div>
       </div>
 
@@ -171,32 +163,29 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                 <tr className="border-b border-[#E8E5E1] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
                   <th className="px-6 py-3.5">Candidate</th>
                   <th className="px-6 py-3.5">Role / Dept</th>
-                  <th className="px-6 py-3.5">Duration</th>
-                  <th className="px-6 py-3.5">Assigned Manager / Employer</th>
-                  <th className="px-6 py-3.5">Status</th>
+                  <th className="px-6 py-3.5">Overall rating</th>
                   <th className="px-6 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8E5E1] text-xs">
                 {submissions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-[#8A8580]">
+                    <td colSpan={4} className="px-6 py-8 text-center text-[#8A8580]">
                       No candidate videos match your selected criteria.
                     </td>
                   </tr>
                 ) : (
                   submissions.map(({ id: submissionId, videos: submissionVideos }) => {
                     const video = submissionVideos[0];
-                    const completedCount = submissionVideos.filter((item) => item.status === 'completed').length;
-                    const reviewedStatus = completedCount === submissionVideos.length
-                      ? 'Completed'
-                      : submissionVideos.some((item) => item.status === 'in_review') ? 'In Review' : 'Pending';
+                    const evaluatedVideos = submissionVideos.filter((item) => item.evaluation);
+                    const overallScore = evaluatedVideos.length
+                      ? Math.round(evaluatedVideos.reduce((sum, item) => sum + (item.evaluation?.overallScore || 0), 0) / evaluatedVideos.length)
+                      : null;
+                    const overallStars = overallScore === null ? 0 : Math.max(0, Math.min(5, Math.round(overallScore / 20)));
+                    const isExpanded = expandedSubmissionId === submissionId;
                     return (
-                    <tr
-                      key={submissionId}
-                      onClick={() => onSelectCandidateVideo(video)}
-                      className="hover:bg-rose-50/30 transition-colors group cursor-pointer"
-                    >
+                    <React.Fragment key={submissionId}>
+                    <tr className="hover:bg-rose-50/30 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
@@ -216,48 +205,76 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                         <span className="text-[11px] text-[#8A8580]">{video.department}</span>
                       </td>
 
-                      <td className="px-6 py-4 text-xs font-mono text-red-900/70">
-                        {submissionVideos.length} video{submissionVideos.length === 1 ? '' : 's'}
-                      </td>
-
-                      <td className="px-6 py-4 text-xs text-[#101010]">
-                        {video.assignedEvaluatorName ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-sm text-red-600">person</span>
-                            <span className="font-medium">{video.assignedEvaluatorName}</span>
-                          </div>
-                        ) : (
-                          <span className="text-red-900/40 italic">Unassigned</span>
-                        )}
-                      </td>
-
                       <td className="px-6 py-4">
-                        <div className="flex flex-col items-start gap-1">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${reviewedStatus === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : reviewedStatus === 'In Review' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-                            {reviewedStatus} · {completedCount}/{submissionVideos.length} reviewed
-                          </span>
-                          <span className={`text-[9px] font-semibold ${submissionVideos.every((item) => item.adminConfirmed) ? 'text-emerald-700' : 'text-amber-700'}`}>
-                            {submissionVideos.filter((item) => item.adminConfirmed).length}/{submissionVideos.length} admin approved
-                          </span>
-                          <span className="text-[9px] text-[#8A8580]">
-                            {submissionVideos.reduce((documentCount, item) => documentCount + (item.documents?.length || 0), 0)} documents
-                          </span>
-                        </div>
+                        {overallScore === null ? (
+                          <span className="text-[11px] text-[#8A8580]">Not rated</span>
+                        ) : (
+                          <div className="flex items-center gap-1.5" aria-label={`Employer overall rating ${overallStars} out of 5 stars`}>
+                            <span className="flex items-center" aria-hidden="true">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span key={star} className={`material-symbols-outlined text-[15px] leading-none ${star <= overallStars ? 'text-amber-400' : 'text-[#D6D3D1]'}`}>star</span>
+                              ))}
+                            </span>
+                            <span className="text-[10px] font-bold text-[#5A5550]">{overallScore}/100</span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-right">
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectCandidateVideo(video);
-                          }}
+                          type="button"
+                          onClick={() => setExpandedSubmissionId(isExpanded ? null : submissionId)}
+                          aria-expanded={isExpanded}
                           className="text-red-600 hover:text-red-800 font-bold flex items-center gap-1 ml-auto cursor-pointer"
                         >
-                          <span>Open Submission</span>
-                          <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                          <span>{isExpanded ? 'Hide questions' : `View ${submissionVideos.length} questions`}</span>
+                          <span className="material-symbols-outlined text-[16px]">{isExpanded ? 'expand_less' : 'expand_more'}</span>
                         </button>
                       </td>
                     </tr>
+                    {isExpanded && submissionVideos.map((item, index) => (
+                      <tr key={item.id} className="bg-stone-50/70">
+                        <td colSpan={4} className="px-6 py-3">
+                          <div className="flex flex-col gap-3 pl-2 sm:flex-row sm:items-center sm:justify-between sm:pl-11">
+                            <div className="min-w-0 space-y-2">
+                              <div className="flex items-start gap-3">
+                                <span className="mt-0.5 text-[10px] font-bold text-[#8A8580]">Q{index + 1}</span>
+                                <span className="text-xs font-medium text-[#101010]">
+                                  {item.questionPrompt || 'Question not specified'}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-7 text-[10px]">
+                                <span className="text-[#5A5550]">
+                                  Review: <span className={`font-bold ${item.status === 'completed' ? 'text-emerald-700' : item.status === 'in_review' ? 'text-amber-700' : 'text-[#8A8580]'}`}>
+                                    {item.status === 'completed' ? 'Completed' : item.status === 'in_review' ? 'In review' : 'Pending'}
+                                  </span>
+                                </span>
+                                <span className="text-[#5A5550]">
+                                  Approval: <span className={`font-bold ${item.adminReviewStatus === 'accepted' ? 'text-emerald-700' : item.adminReviewStatus === 'reupload_requested' ? 'text-amber-700' : 'text-[#8A8580]'}`}>
+                                    {item.adminReviewStatus === 'accepted'
+                                      ? 'Approved'
+                                      : item.adminReviewStatus === 'reupload_requested'
+                                      ? 'Reupload requested'
+                                      : item.adminConfirmed
+                                      ? 'Reviewed'
+                                      : 'Awaiting approval'}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onSelectCandidateVideo(item)}
+                              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                              View &amp; review
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    </React.Fragment>
                     );
                   })
                 )}
@@ -270,11 +287,15 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {submissions.map(({ id: submissionId, videos: submissionVideos }) => {
             const video = submissionVideos[0];
+            const evaluatedVideos = submissionVideos.filter((item) => item.evaluation);
+            const overallScore = evaluatedVideos.length
+              ? Math.round(evaluatedVideos.reduce((sum, item) => sum + (item.evaluation?.overallScore || 0), 0) / evaluatedVideos.length)
+              : null;
+            const overallStars = overallScore === null ? 0 : Math.max(0, Math.min(5, Math.round(overallScore / 20)));
             return (
             <div
               key={submissionId}
-              onClick={() => onSelectCandidateVideo(video)}
-              className="bg-white border border-[#E8E5E1] hover:border-red-400 rounded-2xl overflow-hidden shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
+              className="bg-white border border-[#E8E5E1] hover:border-red-400 rounded-2xl overflow-hidden shadow-xs transition-all group flex flex-col justify-between"
             >
               <div className="relative aspect-video bg-stone-900">
                 <img
@@ -283,24 +304,6 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30"></div>
-
-                <div className="absolute top-3 left-3">
-                  {video.status === 'pending' && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-red-600/90 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
-                      Pending
-                    </span>
-                  )}
-                  {video.status === 'in_review' && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/90 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
-                      In Review
-                    </span>
-                  )}
-                  {video.status === 'completed' && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-600/90 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
-                      Score: {video.evaluation?.overallScore || 90}%
-                    </span>
-                  )}
-                </div>
 
                 <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] font-mono">
                   {video.videoDuration || '05:00'}
@@ -313,14 +316,48 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                     {video.candidateName}
                   </h4>
                   <p className="text-xs text-[#8A8580]">{video.roleApplied}</p>
-                  <p className="mt-1 text-[10px] text-[#8A8580]">{submissionVideos.length} videos</p>
+                  <p className="mt-1 text-[10px] text-[#8A8580]">{submissionVideos.length} questions</p>
+                  {overallScore === null ? (
+                    <p className="mt-2 text-[10px] text-[#8A8580]">Overall rating: Not rated</p>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-1" aria-label={`Employer overall rating ${overallStars} out of 5 stars`}>
+                      <span className="text-[10px] font-semibold text-[#5A5550]">Overall rating:</span>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star} className={`material-symbols-outlined text-[14px] leading-none ${star <= overallStars ? 'text-amber-400' : 'text-[#D6D3D1]'}`} aria-hidden="true">star</span>
+                      ))}
+                      <span className="text-[10px] font-bold text-[#5A5550]">{overallScore}/100</span>
+                    </div>
+                  )}
+                  <ol className="mt-3 space-y-2">
+                    {submissionVideos.map((item, index) => (
+                      <li key={item.id}>
+                        <div className="rounded-lg border border-[#E8E5E1] px-3 py-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="flex gap-2 text-[10px] text-[#5A5550]">
+                              <span className="shrink-0 font-bold text-[#8A8580]">Q{index + 1}</span>
+                              <span>{item.questionPrompt || 'Question not specified'}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onSelectCandidateVideo(item)}
+                              className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-red-700 hover:text-red-900"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">play_circle</span>
+                              View &amp; review
+                            </button>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 pl-6 text-[9px]">
+                            <span className="text-[#5A5550]">Review: <strong className={item.status === 'completed' ? 'text-emerald-700' : item.status === 'in_review' ? 'text-amber-700' : 'text-[#8A8580]'}>{item.status === 'completed' ? 'Completed' : item.status === 'in_review' ? 'In review' : 'Pending'}</strong></span>
+                            <span className="text-[#5A5550]">Approval: <strong className={item.adminReviewStatus === 'accepted' ? 'text-emerald-700' : item.adminReviewStatus === 'reupload_requested' ? 'text-amber-700' : 'text-[#8A8580]'}>{item.adminReviewStatus === 'accepted' ? 'Approved' : item.adminReviewStatus === 'reupload_requested' ? 'Reupload requested' : item.adminConfirmed ? 'Reviewed' : 'Awaiting approval'}</strong></span>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-red-100 flex items-center justify-between text-xs text-[#8A8580]">
-                  <span>Assigned: {video.assignedEvaluatorName?.split(' ')[0] || 'Unassigned'}</span>
-                  <span className="text-red-600 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                    Evaluate <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                  </span>
+                <div className="mt-4 border-t border-red-100 pt-3 text-xs font-semibold text-[#8A8580]">
+                  Select a question to view and review its video
                 </div>
               </div>
             </div>

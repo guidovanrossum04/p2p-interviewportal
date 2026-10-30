@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { CandidateVideo, User, InviteType, InviteLink } from '../types';
+import { Camera, Upload } from 'lucide-react';
+import { CandidateVideo, User, InviteType, InviteLink, CandidateAnswerMode } from '../types';
 import { fetchAssignableSubmissions, groupVideosBySubmission } from '../utils/submissions';
+import p2pLogo from '../../assets/p2plogo.webp';
 
 const toDateTimeLocalValue = (date: Date) => {
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return localDate.toISOString().slice(0, 16);
 };
+
+const candidateQuestions = [
+  'Please tell me a little bit about yourself. For example, who you are, your employment history and your current achievements?',
+  'Tell me about a time that you provided outstanding customer service?',
+  'How would you deal with a difficult patient?',
+  'If you were in a situation where you could not read the prescription, what would you do?',
+  'Describe a clinical intervention that you have made?',
+  'The role as a pharmacist requires you to lead and manage your team. Describe to me how you will lead and manage your team effectively?',
+];
 
 interface CreateInviteLinkModalProps {
   evaluators: User[];
@@ -20,8 +31,12 @@ interface CreateInviteLinkModalProps {
     assignedVideoId?: string;
     expiresAt: string;
     notes?: string;
+    answerMode?: CandidateAnswerMode;
+    videoCount?: number;
+    questionPrompt?: string;
+    questionPrompts?: string[];
+    adminSupportingDocuments?: File[];
   }) => Promise<InviteLink>;
-  onTestLink?: (invite: InviteLink) => void;
 }
 
 export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
@@ -29,7 +44,6 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
   defaultType = 'candidate',
   onClose,
   onCreateInvite,
-  onTestLink,
 }) => {
   const [type, setType] = useState<InviteType>(defaultType);
   const [recipientName, setRecipientName] = useState('');
@@ -40,11 +54,18 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
   const [isLoadingAssignableVideos, setIsLoadingAssignableVideos] = useState(false);
   const [assignableVideosError, setAssignableVideosError] = useState<string | null>(null);
   const [candidateSearch, setCandidateSearch] = useState('');
+  const [isCandidateSearchFocused, setIsCandidateSearchFocused] = useState(false);
   const [candidateResults, setCandidateResults] = useState<Array<{ name: string; email: string; roleApplied?: string }>>([]);
   const [isSearchingCandidates, setIsSearchingCandidates] = useState(false);
   const [candidateSearchError, setCandidateSearchError] = useState<string | null>(null);
   const [roleApplied, setRoleApplied] = useState('Senior Frontend Engineer');
+  const [answerMode, setAnswerMode] = useState<CandidateAnswerMode>('upload');
+  const [selectedQuestionIndexes, setSelectedQuestionIndexes] = useState<number[]>(candidateQuestions.map((_, index) => index));
+  const [isQuestionDropdownOpen, setIsQuestionDropdownOpen] = useState(false);
+  const [adminSupportingDocuments, setAdminSupportingDocuments] = useState<File[]>([]);
   const [assignedVideoId, setAssignedVideoId] = useState('');
+  const selectedQuestionPrompts = selectedQuestionIndexes.map((index) => candidateQuestions[index]).filter(Boolean);
+  const derivedVideoCount = selectedQuestionPrompts.length || 1;
   const [expiresAt, setExpiresAt] = useState(() => toDateTimeLocalValue(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const [notes, setNotes] = useState('');
 
@@ -98,7 +119,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
 
   useEffect(() => {
     const query = candidateSearch.trim();
-    if (type !== 'candidate' || query.length < 2 || (recipientEmail && query === recipientName)) {
+    if (type !== 'candidate' || query.length < 2) {
       setCandidateResults([]);
       setCandidateSearchError(null);
       setIsSearchingCandidates(false);
@@ -142,6 +163,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
     if (candidate.roleApplied) setRoleApplied(candidate.roleApplied);
     setCandidateSearch(candidate.name);
     setCandidateResults([]);
+    setIsCandidateSearchFocused(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -156,6 +178,9 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
+      const inviteQuestionPrompts = type === 'candidate'
+        ? (selectedQuestionPrompts.length ? selectedQuestionPrompts : [candidateQuestions[0]])
+        : undefined;
       const invite = await onCreateInvite({
         type,
         recipientName,
@@ -165,6 +190,11 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
         assignedVideoId: type === 'evaluator' ? assignedVideoId : undefined,
         expiresAt: expiryDate.toISOString(),
         notes,
+        answerMode: type === 'candidate' ? answerMode : undefined,
+        videoCount: type === 'candidate' ? derivedVideoCount : undefined,
+        questionPrompt: type === 'candidate' && inviteQuestionPrompts.length === 1 ? inviteQuestionPrompts[0] : undefined,
+        questionPrompts: type === 'candidate' ? inviteQuestionPrompts : undefined,
+        adminSupportingDocuments: type === 'evaluator' ? adminSupportingDocuments : undefined,
       });
       setCreatedInvite(invite);
     } catch (error) {
@@ -186,6 +216,21 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleWhatsAppShare = () => {
+    if (!createdInvite) return;
+    const shareUrl = getFullUrl(createdInvite.token, createdInvite.type);
+    const expiresAt = new Date(createdInvite.expiresAt);
+    const expiryText = Number.isNaN(expiresAt.getTime())
+      ? 'Expiry date unavailable'
+      : `Valid until ${expiresAt.toLocaleDateString()} at ${expiresAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const text = createdInvite.type === 'candidate'
+      ? `*P2P Recruitment — Video Submission Invitation*\n\nHello ${createdInvite.recipientName},\n\nPlease use your secure link to ${createdInvite.answerMode === 'record' ? 'record' : 'upload'} the requested video response for *${createdInvite.roleApplied || 'the open position'}*:\n${shareUrl}\n\n${expiryText}\n\nNo login is required.\n\nThank you,\n*P2P Recruitment*`
+      : `*P2P Recruitment — Review Invitation*\n\nHello ${createdInvite.recipientName},\n\nPlease use your secure link to review the assigned candidate submission:\n${shareUrl}\n\n${expiryText}\n\nThank you,\n*P2P Recruitment*`;
+
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div
       id="create-invite-link-modal"
@@ -193,7 +238,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
     >
       <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden border border-[#E8E5E1] flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
+        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-white">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-xs">
               <span className="material-symbols-outlined text-base">link</span>
@@ -316,6 +361,8 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     type="search"
                     autoComplete="off"
                     value={candidateSearch}
+                    onFocus={() => setIsCandidateSearchFocused(true)}
+                    onBlur={() => window.setTimeout(() => setIsCandidateSearchFocused(false), 150)}
                     onChange={(event) => {
                       setCandidateSearch(event.target.value);
                       setRecipientName('');
@@ -324,7 +371,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     placeholder="Search by candidate name or email"
                     className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
                   />
-                  {candidateSearch.trim().length >= 2 && (
+                  {isCandidateSearchFocused && candidateSearch.trim().length >= 2 && (
                     <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[#E8E5E1] bg-white shadow-lg">
                       {isSearchingCandidates ? (
                         <p className="px-3 py-3 text-xs text-[#8A8580]">Searching candidates...</p>
@@ -335,6 +382,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                           <button
                             key={candidate.email}
                             type="button"
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={() => handleCandidateSelect(candidate)}
                             className="block w-full border-b border-red-50 px-3 py-2.5 text-left last:border-0 hover:bg-red-50"
                           >
@@ -396,19 +444,159 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 />
               </div>
 
+              {type === 'candidate' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#101010] mb-2">Candidate response method</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        aria-pressed={answerMode === 'upload'}
+                        onClick={() => setAnswerMode('upload')}
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                          answerMode === 'upload'
+                            ? 'border-[#101010] bg-[#101010] text-white'
+                            : 'border-[#E8E5E1] bg-white text-[#101010] hover:border-red-500'
+                        }`}
+                      >
+                        <Upload aria-hidden="true" className="h-4 w-4" />
+                        Upload video
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={answerMode === 'record'}
+                        onClick={() => setAnswerMode('record')}
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                          answerMode === 'record'
+                            ? 'border-[#101010] bg-[#101010] text-white'
+                            : 'border-[#E8E5E1] bg-white text-[#101010] hover:border-red-500'
+                        }`}
+                      >
+                        <Camera aria-hidden="true" className="h-4 w-4" />
+                        Record video
+                      </button>
+                    </div>
+                    <p className="mt-1 text-[10px] text-[#5A5550]">
+                      Candidates using this link will only be able to {answerMode === 'record' ? 'record' : 'upload'} their video responses.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#101010] mb-2">Question</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        aria-expanded={isQuestionDropdownOpen}
+                        aria-haspopup="listbox"
+                        onClick={() => setIsQuestionDropdownOpen((open) => !open)}
+                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#E8E5E1] bg-white px-3 py-2.5 text-left text-xs text-[#101010] hover:border-red-500 focus:border-red-500 focus:outline-none"
+                      >
+                        <span className="truncate">
+                          {selectedQuestionIndexes.length === candidateQuestions.length
+                            ? 'All questions selected'
+                            : `${selectedQuestionIndexes.length} question${selectedQuestionIndexes.length === 1 ? '' : 's'} selected`}
+                        </span>
+                        <span aria-hidden="true" className="text-sm text-[#4D4A47]">{isQuestionDropdownOpen ? '▴' : '▾'}</span>
+                      </button>
+                      {isQuestionDropdownOpen && (
+                        <div role="listbox" aria-label="Select candidate questions" aria-multiselectable="true" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-[#E8E5E1] bg-white p-2 shadow-lg">
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={selectedQuestionIndexes.length === candidateQuestions.length}
+                            onClick={() => setSelectedQuestionIndexes((current) => (
+                              current.length === candidateQuestions.length
+                                ? [0]
+                                : candidateQuestions.map((_, index) => index)
+                            ))}
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-bold text-[#101010] hover:bg-red-50"
+                          >
+                            <input type="checkbox" readOnly checked={selectedQuestionIndexes.length === candidateQuestions.length} className="accent-red-600" />
+                            All questions
+                          </button>
+                          {candidateQuestions.map((option, index) => {
+                            const selected = selectedQuestionIndexes.includes(index);
+                            return (
+                              <button
+                                key={option}
+                                type="button"
+                                role="option"
+                                aria-selected={selected}
+                                onClick={() => {
+                                  setSelectedQuestionIndexes((current) => {
+                                    if (current.includes(index)) {
+                                      const next = current.filter((value) => value !== index);
+                                      return next.length ? next : [index];
+                                    }
+                                    return [...current, index].sort((a, b) => a - b);
+                                  });
+                                }}
+                                className="flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-[11px] leading-4 text-[#101010] hover:bg-red-50"
+                              >
+                                <input type="checkbox" readOnly checked={selected} className="mt-0.5 accent-red-600" />
+                                <span>{option}</span>
+                              </button>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => setIsQuestionDropdownOpen(false)}
+                            className="mt-1 w-full rounded-lg bg-[#101010] px-3 py-2 text-[11px] font-bold text-white hover:bg-red-700"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Evaluator Assignment Target Video */}
+              {type === 'evaluator' && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#101010] mb-1">Supporting Documents (optional)</label>
+                  <p className="mb-2 text-[11px] text-[#5A5550]">Admin-provided files for the assigned submission. Candidates will not be asked to upload these.</p>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
+                    onChange={(event) => {
+                      const files: File[] = event.currentTarget.files ? Array.from(event.currentTarget.files) : [];
+                      if (files.length > 20) {
+                        setAdminSupportingDocuments([]);
+                        setErrorMessage('Select no more than 20 supporting documents.');
+                        event.currentTarget.value = '';
+                        return;
+                      }
+                      if (files.some((file) => file.size > 25 * 1024 * 1024)) {
+                        setAdminSupportingDocuments([]);
+                        setErrorMessage('Each supporting document must be 25 MB or smaller.');
+                        event.currentTarget.value = '';
+                        return;
+                      }
+                      setErrorMessage(null);
+                      setAdminSupportingDocuments(files);
+                    }}
+                    className="block w-full rounded-xl border border-[#E8E5E1] bg-white px-3 py-2 text-[11px] text-[#4D4A47]"
+                  />
+                  {adminSupportingDocuments.length > 0 && (
+                    <p className="mt-1 text-[11px] text-[#5A5550]">{adminSupportingDocuments.length} file{adminSupportingDocuments.length === 1 ? '' : 's'} selected</p>
+                  )}
+                </div>
+              )}
+
               {type === 'evaluator' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#101010] mb-1">
                     Approved Candidate Submission *
                   </label>
                   {isLoadingAssignableVideos ? (
-                    <p className="mb-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">Loading submissions ready for assignment...</p>
+                    <p className="mb-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">Loading submissions ready for assignment...</p>
                   ) : assignableVideosError ? (
                     <p role="alert" className="mb-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">{assignableVideosError}</p>
                   ) : assignableVideos.length === 0 && (
                     <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                      No submissions are ready. Every video in a submission must be approved and not already assigned.
+                      No submissions are ready. Every video in a submission must be approved. Previously reviewed submissions can be assigned to a different employer.
                     </p>
                   )}
                   <select
@@ -430,10 +618,6 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                   </select>
                 </div>
               )}
-
-              <p className="rounded-xl border border-[#E8E5E1] bg-red-50/30 p-3 text-xs text-[#5A5550]">
-                The secure link will be emailed automatically to {type === 'candidate' ? 'the candidate' : 'the selected Manager / Employer'}.
-              </p>
 
               {/* Expiry Date */}
               <div>
@@ -486,38 +670,27 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
           ) : (
             /* Link Success View */
             <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="p-4 bg-red-50/60 rounded-2xl border border-red-200 text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center mx-auto shadow-md shadow-red-500/25">
-                  <span className="material-symbols-outlined text-2xl">check</span>
+              <div className="p-4 bg-white rounded-2xl border border-[#E8E5E1] text-center space-y-2">
+                <img src={p2pLogo} alt="P2P Recruitment" className="mx-auto h-14 w-auto object-contain" />
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
+                  <span className="material-symbols-outlined text-xl" aria-hidden="true">check_circle</span>
                 </div>
                 <h4 className="font-extrabold text-sm text-[#101010]">
                   {createdInvite.type === 'candidate' ? 'Candidate Upload Link Ready' : 'Manager / Employer Review Link Ready'}
                 </h4>
-                <p className="text-xs text-red-900/70 max-w-md mx-auto">
-                  Share this private link with{' '}
-                  <strong className="text-[#101010]">{createdInvite.recipientName}</strong>. Only individuals with this
-                  token can access the {createdInvite.type === 'candidate' ? 'upload screen' : 'evaluation queue'}.
-                </p>
               </div>
 
               {/* Link Details Card */}
               <div className="bg-[#F5F2EE] p-4 rounded-2xl border border-[#E8E5E1] space-y-3">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-red-900/60 uppercase text-[10px]">Access Token</span>
-                  <span className="font-mono font-extrabold text-red-700 px-2 py-0.5 bg-white rounded border border-red-200">
-                    {createdInvite.token}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-red-900/60 uppercase text-[10px]">Recipient</span>
+                  <span className="font-bold text-[#101010] uppercase text-[10px]">Recipient</span>
                   <span className="font-semibold text-[#101010]">
                     {createdInvite.recipientName} ({createdInvite.recipientEmail || 'Direct link'})
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-red-900/60 uppercase text-[10px]">Valid Until</span>
+                  <span className="font-bold text-[#101010] uppercase text-[10px]">Valid Until</span>
                   <span className="text-[#101010]">
                     {new Date(createdInvite.expiresAt).toLocaleDateString()} at{' '}
                     {new Date(createdInvite.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -526,7 +699,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
 
                 {/* Copyable URL input bar */}
                 <div className="pt-2">
-                  <label className="block text-[10px] font-bold text-red-900/60 uppercase mb-1">
+                  <label className="block text-[10px] font-bold text-[#101010] uppercase mb-1">
                     Direct Portal URL
                   </label>
                   <div className="flex gap-2">
@@ -548,81 +721,23 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 </div>
               </div>
 
-              {/* Zero login notice banner */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2.5 text-xs text-emerald-900">
-                <span className="material-symbols-outlined text-emerald-600 text-lg shrink-0">verified_user</span>
-                <div>
-                  <span className="font-bold">Zero Login Barrier:</span> {createdInvite.recipientName} does{' '}
-                  <strong>not need a password or separate login</strong>. Clicking the link authenticates them directly to{' '}
-                  {createdInvite.type === 'candidate' ? 'record/upload their video' : 'grade the assigned submission'}.
-                </div>
-              </div>
-
-              {/* Action Buttons & Share via WhatsApp / Email */}
+              {/* Share link directly via WhatsApp */}
               <div className="space-y-3 pt-2 border-t border-[#E8E5E1]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-bold text-red-900/60 uppercase">Share Directly:</span>
-                  
-                  {/* WhatsApp Share */}
                   <button
                     type="button"
-                    onClick={() => {
-                      const shareUrl = getFullUrl(createdInvite.token, createdInvite.type);
-                      const text = createdInvite.type === 'candidate'
-                        ? `Hello ${createdInvite.recipientName}, here is your private link to record and upload your video submission for ${createdInvite.roleApplied || 'the open position'}: ${shareUrl}`
-                        : `Hello ${createdInvite.recipientName}, here is your private evaluation link to review candidate submissions: ${shareUrl}`;
-                      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-                    }}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    onClick={handleWhatsAppShare}
+                    className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <span className="material-symbols-outlined text-sm">chat</span>
+                    <svg aria-hidden="true" viewBox="0 0 32 32" className="h-4 w-4 fill-current">
+                      <path d="M16.04 3C8.86 3 3.02 8.82 3.02 15.98c0 2.3.61 4.55 1.77 6.53L3 29l6.67-1.75a13.1 13.1 0 0 0 6.36 1.63h.01c7.17 0 13.01-5.82 13.02-12.98A12.9 12.9 0 0 0 25.24 6.7 12.94 12.94 0 0 0 16.04 3Zm0 23.68h-.01a10.9 10.9 0 0 1-5.55-1.52l-.4-.24-3.96 1.04 1.06-3.85-.26-.42a10.78 10.78 0 0 1-1.66-5.72c0-5.94 4.83-10.77 10.78-10.77 2.88 0 5.59 1.12 7.63 3.16a10.7 10.7 0 0 1 3.16 7.62c-.01 5.94-4.85 10.7-10.79 10.7Zm5.92-8.05c-.32-.16-1.9-.94-2.2-1.05-.3-.1-.51-.16-.73.16-.21.32-.83 1.05-1.02 1.27-.19.21-.38.24-.7.08-.32-.16-1.34-.49-2.55-1.56-.95-.84-1.59-1.88-1.77-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.21-.32.32-.54.1-.21.05-.4-.03-.56-.08-.16-.73-1.75-1-2.39-.26-.62-.52-.54-.72-.55h-.62c-.21 0-.56.08-.86.4-.3.32-1.13 1.1-1.13 2.69 0 1.59 1.16 3.13 1.32 3.35.16.21 2.28 3.48 5.53 4.88.77.33 1.37.53 1.84.68.77.24 1.47.21 2.02.13.62-.09 1.9-.78 2.17-1.53.27-.75.27-1.4.19-1.53-.08-.14-.29-.22-.61-.38Z"/>
+                    </svg>
                     <span>Share via WhatsApp</span>
-                  </button>
-
-                  {/* Email Share */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const shareUrl = getFullUrl(createdInvite.token, createdInvite.type);
-                      const subject = createdInvite.type === 'candidate'
-                        ? `Video Submission Link - ${createdInvite.roleApplied || 'Interview'}`
-                        : `Evaluation Review Assignment - Candidate Evaluation`;
-                      const body = createdInvite.type === 'candidate'
-                        ? `Hi ${createdInvite.recipientName},\n\nPlease use the following link to record or upload your self-introduction video for ${createdInvite.roleApplied || 'the role'}:\n\n${shareUrl}\n\nNote: No login is required. Simply click the link to begin.\n\nBest regards,\nP2P Admin`
-                        : `Hi ${createdInvite.recipientName},\n\nPlease use the following link to evaluate candidate submissions:\n\n${shareUrl}\n\nNote: No login is required. Simply click the link to begin grading.\n\nBest regards,\nP2P Admin`;
-                      window.open(`mailto:${encodeURIComponent(createdInvite.recipientEmail || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                    }}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <span className="material-symbols-outlined text-sm">mail</span>
-                    <span>Share via Email</span>
                   </button>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setCreatedInvite(null)}
-                    className="text-xs font-semibold text-red-700 hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-sm">add_link</span>
-                    Create another link
-                  </button>
-
                   <div className="flex items-center gap-2">
-                    {onTestLink && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onTestLink(createdInvite);
-                          onClose();
-                        }}
-                        className="px-4 py-2 border border-red-300 bg-white hover:bg-red-50 text-red-700 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">open_in_new</span>
-                        Open Link as {createdInvite.type === 'candidate' ? 'User' : 'Manager / Employer'}
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={onClose}

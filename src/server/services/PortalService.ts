@@ -35,7 +35,7 @@ export class PortalService {
     return { ...invite, token };
   }
 
-  async validateInvite(token: string): Promise<{ invite: InviteLink; video: CandidateVideo | null; videos: CandidateVideo[]; uploadLinks: InviteLink[]; record: ShareLinkRecord }> {
+  async validateInvite(token: string): Promise<{ invite: InviteLink; video: CandidateVideo | null; videos: CandidateVideo[]; record: ShareLinkRecord }> {
     if (!token || token.length > 200) throw new PortalError('Invalid share link.', 404);
     const record = await this.repository.findInvite(hashToken(token));
     if (!record) throw new PortalError('Invalid share link.', 404);
@@ -65,6 +65,38 @@ export class PortalService {
       createdBy: record.created_by,
       notes: record.notes,
       accessCount: record.access_count,
+      ...(record.purpose === 'upload'
+        ? {
+            answerMode: record.answer_mode === 'record' ? 'record' : 'upload',
+            videoCount: Number.isFinite(Number(record.video_count)) ? Math.max(1, Number(record.video_count)) : 1,
+            questionPrompt: (() => {
+              const questionPrompts = typeof record.question_prompt === 'string' && record.question_prompt.trim()
+                ? (() => {
+                    try {
+                      const parsed = JSON.parse(record.question_prompt);
+                      return Array.isArray(parsed) ? parsed.filter((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim())) : [record.question_prompt.trim()];
+                    } catch {
+                      return [record.question_prompt.trim()];
+                    }
+                  })()
+                : [];
+              return questionPrompts[0];
+            })(),
+            questionPrompts: (() => {
+              const questionPrompts = typeof record.question_prompt === 'string' && record.question_prompt.trim()
+                ? (() => {
+                    try {
+                      const parsed = JSON.parse(record.question_prompt);
+                      return Array.isArray(parsed) ? parsed.filter((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim())) : [record.question_prompt.trim()];
+                    } catch {
+                      return [record.question_prompt.trim()];
+                    }
+                  })()
+                : [];
+              return questionPrompts.length ? questionPrompts : undefined;
+            })(),
+          }
+        : {}),
       ...(record.purpose === 'review'
         ? {
             rubricWeights: Array.isArray(record.rubric_weights) && record.rubric_weights.length
@@ -73,26 +105,39 @@ export class PortalService {
           }
         : {}),
     };
-    const video = await this.repository.getAssignedVideo(record);
-    const videos = record.purpose === 'review'
+    const assignedVideo = await this.repository.getAssignedVideo(record);
+    const assignedVideos = record.purpose === 'review'
       ? await this.repository.getAssignedVideos(record)
       : submittedVideos;
     if (record.purpose === 'review') {
-      videos.forEach((assignedVideo) => {
-        assignedVideo.videoUrl = `/api/public/links/${encodeURIComponent(token)}/video?videoId=${encodeURIComponent(assignedVideo.id)}`;
+      assignedVideos.forEach((video) => {
+        video.videoUrl = `/api/public/links/${encodeURIComponent(token)}/video?videoId=${encodeURIComponent(video.id)}`;
+        video.documents = (video.documents || []).map((document) => {
+          const documentUrl = `/api/public/links/${encodeURIComponent(token)}/documents/${encodeURIComponent(video.id)}/${encodeURIComponent(document.id)}`;
+          return {
+            ...document,
+            url: documentUrl,
+            downloadUrl: `${documentUrl}?download=1`,
+          };
+        });
       });
-      if (video) video.videoUrl = videos.find((assignedVideo) => assignedVideo.id === video.id)?.videoUrl || video.videoUrl;
     }
-    const uploadLinks = record.purpose === 'upload'
-      ? await this.repository.listCandidateUploadLinks(record.recipient_email)
-      : [];
-    return { invite, video, videos, uploadLinks, record };
+    const redactAdminData = (video: CandidateVideo): CandidateVideo => ({
+      ...video,
+      evaluation: undefined,
+      evaluationHistory: [],
+      assignedEvaluatorId: undefined,
+      assignedEvaluatorName: undefined,
+    });
+    const video = assignedVideo ? redactAdminData(assignedVideo) : null;
+    const videos = assignedVideos.map(redactAdminData);
+    return { invite, video, videos, record };
   }
 
   async uploadCandidate(token: string, input: UploadInput): Promise<CandidateVideo[]> {
-    if (!input.candidateName.trim() || !input.candidateEmail.trim() || input.videos.length !== 6
+    if (!input.candidateName.trim() || !input.candidateEmail.trim() || input.videos.length < 1 || input.videos.length > 6
       || input.videos.some((video) => !video.questionPrompt?.trim())) {
-      throw new PortalError('Candidate name, email, and one video response for each of the six questions are required.');
+      throw new PortalError('Candidate name, email, and a valid video response for each requested question are required.');
     }
     if (input.documents.length > 20) throw new PortalError('Upload no more than 20 supporting documents.');
     return this.repository.createCandidateVideos(hashToken(token), input);
@@ -106,11 +151,17 @@ export class PortalService {
 
   async submitEvaluation(token: string, input: EvaluationInput): Promise<CandidateVideo> {
     if (!input.videoId) throw new PortalError('Choose a video from this submission before submitting feedback.');
+    if (!input.scores || typeof input.scores !== 'object' || Array.isArray(input.scores)) {
+      throw new PortalError('Rate every Standard Evaluation Rubric criterion before submitting.');
+    }
     const values = Object.values(input.scores);
     if (values.length < 1 || values.length > 12 || values.some((score) => !Number.isInteger(score) || score < 1 || score > 5)) {
       throw new PortalError('Every rubric score must be between 1 and 5.');
     }
     if (!['selected', 'rejected'].includes(input.decision)) throw new PortalError('Choose Selected or Rejected as the evaluation decision.');
+    if (typeof input.notes !== 'string' || !input.notes.trim() || input.notes.trim().length > 4000) {
+      throw new PortalError('Feedback is required (maximum 4,000 characters). Explain why the candidate should be recruited or rejected.');
+    }
     return this.repository.submitEvaluation(hashToken(token), input);
   }
 }

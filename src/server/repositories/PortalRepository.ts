@@ -16,6 +16,11 @@ export interface CreateInviteInput {
   expiresAt: Date;
   notes: string;
   createdBy: string;
+  answerMode?: 'upload' | 'record';
+  videoCount?: number;
+  questionPrompt?: string;
+  questionPrompts?: string[];
+  adminSupportingDocuments?: UploadInput['documents'];
 }
 
 export interface UploadInput {
@@ -61,6 +66,9 @@ export interface ShareLinkRecord {
   token_preview: string;
   token_ciphertext?: string;
   submission_id: string;
+  answer_mode?: 'upload' | 'record' | null;
+  video_count?: number | null;
+  question_prompt?: string | null;
   rubric_weights?: RubricWeight[];
 }
 
@@ -129,6 +137,8 @@ const videoFromRow = (row: VideoRow): CandidateVideo => {
     wasReuploaded: Boolean(details.wasReuploaded),
     previousAdminFeedback: details.adminPreviousFeedback || '',
     adminFeedback: row.admin_feedback || '',
+    adminReviewScores: details.adminReviewScores || {},
+    adminOverallRating: Number.isFinite(Number(details.adminOverallRating)) ? Number(details.adminOverallRating) : undefined,
     documents: Array.isArray(details.documents) ? details.documents.map((document: Record<string, any>) => {
       const url = `/api/videos/${encodeURIComponent(row.id)}/documents/${encodeURIComponent(document.id)}`;
       return {
@@ -158,49 +168,148 @@ const videoFromRow = (row: VideoRow): CandidateVideo => {
       areasToImprove: row.extra?.areasToImprove,
       rubricWeights: row.extra?.rubricWeights,
     } : undefined,
-    evaluationHistory: Array.isArray(details.evaluationHistory) ? details.evaluationHistory : [],
+    evaluationHistory: Array.isArray(row.evaluation_history)
+      ? row.evaluation_history
+      : Array.isArray(details.evaluationHistory) ? details.evaluationHistory : [],
   };
 };
 
-const inviteFromRow = (row: ShareLinkRecord, token?: string): InviteLink => ({
-  id: row.id,
-  token: token || row.token_preview,
-  type: row.purpose === 'upload' ? 'candidate' : 'evaluator',
-  title: row.purpose === 'upload' ? 'Candidate video upload link' : 'Evaluator video review link',
-  recipientName: row.recipient_name,
-  recipientEmail: row.recipient_email,
-  roleApplied: row.role_applied,
-  department: row.department,
-  assignedVideoId: row.video_id || undefined,
-  assignedCandidateName: row.candidate_name || undefined,
-  submissionId: row.submission_id,
-  ...(row.purpose === 'review' && Array.isArray(row.rubric_weights) && row.rubric_weights.length
-    ? { rubricWeights: row.rubric_weights }
-    : {}),
-  status: row.status === 'active' && new Date(row.expires_at) < new Date() ? 'expired' : row.status,
-  createdAt: new Date(row.created_at).toISOString(),
-  expiresAt: new Date(row.expires_at).toISOString(),
-  expiresInHours: Math.max(0, Math.ceil((new Date(row.expires_at).getTime() - new Date(row.created_at).getTime()) / 3600000)),
-  createdBy: row.created_by,
-  notes: row.notes,
-  accessCount: Number(row.access_count),
-});
+const parseQuestionPrompts = (value?: string | null): string[] => {
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim()));
+    }
+  } catch {
+    // Fallback below for legacy plain-text prompts.
+  }
+  const trimmed = value.trim();
+  return trimmed ? [trimmed] : [];
+};
+
+const inviteFromRow = (row: ShareLinkRecord, token?: string): InviteLink => {
+  const questionPrompts = row.purpose === 'upload' ? parseQuestionPrompts(row.question_prompt) : [];
+  return {
+    id: row.id,
+    token: token || row.token_preview,
+    type: row.purpose === 'upload' ? 'candidate' : 'evaluator',
+    title: row.purpose === 'upload' ? 'Candidate video upload link' : 'Evaluator video review link',
+    recipientName: row.recipient_name,
+    recipientEmail: row.recipient_email,
+    roleApplied: row.role_applied,
+    department: row.department,
+    assignedVideoId: row.video_id || undefined,
+    assignedCandidateName: row.candidate_name || undefined,
+    submissionId: row.submission_id,
+    ...(row.purpose === 'upload' ? {
+      answerMode: row.answer_mode === 'record' ? 'record' : 'upload',
+      videoCount: Number.isFinite(Number(row.video_count)) ? Math.max(1, Number(row.video_count)) : undefined,
+      questionPrompt: questionPrompts[0],
+      questionPrompts: questionPrompts.length ? questionPrompts : undefined,
+    } : {}),
+    ...(row.purpose === 'review' && Array.isArray(row.rubric_weights) && row.rubric_weights.length
+      ? { rubricWeights: row.rubric_weights }
+      : {}),
+    status: row.status === 'active' && new Date(row.expires_at) < new Date() ? 'expired' : row.status,
+    createdAt: new Date(row.created_at).toISOString(),
+    expiresAt: new Date(row.expires_at).toISOString(),
+    expiresInHours: Math.max(0, Math.ceil((new Date(row.expires_at).getTime() - new Date(row.created_at).getTime()) / 3600000)),
+    createdBy: row.created_by,
+    notes: row.notes,
+    accessCount: Number(row.access_count),
+  };
+};
 
 const videoSelect = `
-  SELECT v.*, a.evaluator_id, u.name AS evaluator_name,
-         e.id AS evaluation_id, e.scores, e.overall_score, e.decision,
-         e.notes AS evaluation_notes, e.extra, e.submitted_at
+  SELECT v.*, latest_review.evaluator_id, latest_review.evaluator_name,
+         latest_review.evaluation_id, latest_review.scores, latest_review.overall_score,
+         latest_review.decision, latest_review.evaluation_notes, latest_review.extra, latest_review.submitted_at,
+         candidate_reviews.evaluation_history
   FROM videos v
-  LEFT JOIN assignments a ON a.video_id = v.id
-  LEFT JOIN users u ON u.id = a.evaluator_id
-  LEFT JOIN evaluations e ON e.assignment_id = a.id`;
+  LEFT JOIN LATERAL (
+    SELECT a.evaluator_id, u.name AS evaluator_name, e.id AS evaluation_id, e.scores,
+           e.overall_score, e.decision, e.notes AS evaluation_notes, e.extra, e.submitted_at
+    FROM assignments a
+    LEFT JOIN users u ON u.id = a.evaluator_id
+    LEFT JOIN evaluations e ON e.assignment_id = a.id
+    WHERE a.video_id = v.id
+    ORDER BY (a.status <> 'completed') DESC, a.assigned_at DESC
+    LIMIT 1
+  ) latest_review ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT (
+      COALESCE(
+        jsonb_agg(
+          jsonb_build_object(
+            'evaluatorId', history_assignment.evaluator_id,
+            'evaluatorName', history_user.name,
+            'evaluatedAt', history_evaluation.submitted_at,
+            'overallScore', history_evaluation.overall_score,
+            'scores', history_evaluation.scores,
+            'decision', history_evaluation.decision,
+            'notes', history_evaluation.notes,
+            'rubricWeights', history_evaluation.extra->'rubricWeights',
+            'candidateName', history_video.candidate_name,
+            'candidateEmail', history_video.candidate_email,
+            'roleApplied', history_video.role_applied,
+            'questionPrompt', history_video.details->>'questionPrompt',
+            'videoId', history_video.id,
+            'submissionId', COALESCE(history_video.details->>'submissionId', history_video.details->>'submissionBatchId', history_video.id)
+          )
+          ORDER BY history_evaluation.submitted_at DESC
+        ),
+        '[]'::jsonb
+      ) || COALESCE((
+        SELECT jsonb_agg(
+          archived_review || jsonb_build_object(
+            'candidateName', archived_video.candidate_name,
+            'candidateEmail', archived_video.candidate_email,
+            'roleApplied', archived_video.role_applied,
+            'questionPrompt', archived_video.details->>'questionPrompt',
+            'videoId', archived_video.id,
+            'submissionId', COALESCE(archived_video.details->>'submissionId', archived_video.details->>'submissionBatchId', archived_video.id)
+          )
+          ORDER BY archived_review->>'evaluatedAt' DESC
+        )
+        FROM videos archived_video
+        CROSS JOIN LATERAL jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof(archived_video.details->'evaluationHistory') = 'array'
+              THEN archived_video.details->'evaluationHistory'
+            ELSE '[]'::jsonb
+          END
+        ) archived_reviews(archived_review)
+        WHERE LOWER(archived_video.candidate_email) = LOWER(v.candidate_email)
+      ), '[]'::jsonb)
+    ) AS evaluation_history
+    FROM videos history_video
+    JOIN assignments history_assignment ON history_assignment.video_id = history_video.id
+    JOIN evaluations history_evaluation ON history_evaluation.assignment_id = history_assignment.id
+    LEFT JOIN users history_user ON history_user.id = history_assignment.evaluator_id
+    WHERE LOWER(history_video.candidate_email) = LOWER(v.candidate_email)
+  ) candidate_reviews ON TRUE`;
 
 export class PortalRepository {
   constructor(private readonly pool: Pool) {}
 
   private settingsTableReady?: Promise<void>;
+  private shareLinkConfigReady?: Promise<void>;
   private shareLinkRubricReady?: Promise<void>;
   private evaluationDecisionReady?: Promise<void>;
+  private multipleEmployerAssignmentsReady?: Promise<void>;
+
+  private ensureMultipleEmployerAssignments(): Promise<void> {
+    if (!this.multipleEmployerAssignmentsReady) {
+      this.multipleEmployerAssignmentsReady = this.pool.query(
+        'ALTER TABLE assignments DROP CONSTRAINT IF EXISTS assignments_video_id_key',
+      ).then(() => undefined).catch((error) => {
+        this.multipleEmployerAssignmentsReady = undefined;
+        throw error;
+      });
+    }
+    return this.multipleEmployerAssignmentsReady;
+  }
 
   private ensureEvaluationDecisionConstraint(): Promise<void> {
     if (!this.evaluationDecisionReady) {
@@ -214,6 +323,20 @@ export class PortalRepository {
       });
     }
     return this.evaluationDecisionReady;
+  }
+
+  private ensureShareLinkConfigColumns(): Promise<void> {
+    if (!this.shareLinkConfigReady) {
+      this.shareLinkConfigReady = this.pool.query(`
+        ALTER TABLE share_links ADD COLUMN IF NOT EXISTS answer_mode TEXT NOT NULL DEFAULT 'upload';
+        ALTER TABLE share_links ADD COLUMN IF NOT EXISTS video_count INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE share_links ADD COLUMN IF NOT EXISTS question_prompt TEXT;
+      `).then(() => undefined).catch((error) => {
+        this.shareLinkConfigReady = undefined;
+        throw error;
+      });
+    }
+    return this.shareLinkConfigReady;
   }
 
   private ensureShareLinkRubricColumn(): Promise<void> {
@@ -463,7 +586,11 @@ export class PortalRepository {
     const result = await this.pool.query(
       `${videoSelect}
        WHERE ($1::text IS NULL OR v.status = $1)
-         AND ($2::text IS NULL OR a.evaluator_id = $2)
+         AND ($2::text IS NULL OR EXISTS (
+           SELECT 1 FROM assignments evaluator_assignment
+           WHERE evaluator_assignment.video_id = v.id
+             AND evaluator_assignment.evaluator_id = $2
+         ))
          AND ($3::text IS NULL OR v.candidate_name ILIKE '%' || $3 || '%' OR v.candidate_email ILIKE '%' || $3 || '%' OR v.role_applied ILIKE '%' || $3 || '%' OR v.department ILIKE '%' || $3 || '%')
        ORDER BY v.created_at DESC`,
       [filters.status && filters.status !== 'all' ? filters.status : null, filters.evaluatorId || null, filters.search || null],
@@ -502,8 +629,6 @@ export class PortalRepository {
       if (filters.reviewStatus === 'ready_to_assign') {
         conditions.push(`v.admin_confirmed = TRUE
           AND v.admin_review_status = 'accepted'
-          AND v.status <> 'completed'
-          AND NOT EXISTS (SELECT 1 FROM assignments a WHERE a.video_id = v.id)
           AND NOT EXISTS (
             SELECT 1 FROM videos submission_video
             WHERE COALESCE(submission_video.details->>'submissionId', submission_video.details->>'submissionBatchId', submission_video.id)
@@ -511,8 +636,6 @@ export class PortalRepository {
               AND (
                 submission_video.admin_confirmed IS DISTINCT FROM TRUE
                 OR submission_video.admin_review_status <> 'accepted'
-                OR submission_video.status = 'completed'
-                OR EXISTS (SELECT 1 FROM assignments submission_assignment WHERE submission_assignment.video_id = submission_video.id)
               )
           )`);
       } else if (filters.reviewStatus === 'assigned') {
@@ -598,13 +721,17 @@ export class PortalRepository {
     return result.rowCount ? videoFromRow(result.rows[0]) : null;
   }
 
-  async reviewVideo(id: string, decision: 'accepted' | 'reupload_requested', feedback: string): Promise<CandidateVideo | null> {
+  async reviewVideo(id: string, decision: 'accepted' | 'reupload_requested', feedback: string, scores: Record<string, number>): Promise<CandidateVideo | null> {
     const result = await this.pool.query(
       `UPDATE videos
        SET admin_confirmed = ($2 = 'accepted'), admin_review_status = $2,
-           admin_feedback = $3, admin_reviewed_at = NOW()
+           admin_feedback = $3, admin_reviewed_at = NOW(),
+           details = details || jsonb_build_object(
+             'adminReviewScores', $4::jsonb,
+             'adminOverallRating', $5::numeric
+           )
        WHERE id = $1 RETURNING id`,
-      [id, decision, feedback],
+      [id, decision, feedback, JSON.stringify(scores), Object.values(scores).reduce((total, score) => total + score, 0) / Object.values(scores).length],
     );
     return result.rowCount ? this.getVideo(id) : null;
   }
@@ -671,16 +798,6 @@ export class PortalRepository {
     };
   }
 
-  async listCandidateUploadLinks(email: string): Promise<InviteLink[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM share_links
-       WHERE purpose = 'upload' AND LOWER(recipient_email) = LOWER($1)
-       ORDER BY created_at DESC`,
-      [email],
-    );
-    return result.rows.map((row) => ({ ...inviteFromRow(row), token: '' }));
-  }
-
   async getInviteForNotification(id: string): Promise<InviteLink | null> {
     const result = await this.pool.query(
       `SELECT sl.*, v.candidate_name, u.name AS evaluator_name
@@ -699,7 +816,9 @@ export class PortalRepository {
   }
 
   async createInvite(input: CreateInviteInput): Promise<InviteLink> {
+    await this.ensureShareLinkConfigColumns();
     await this.ensureShareLinkRubricColumn();
+    await this.ensureMultipleEmployerAssignments();
     const rubricWeights = input.type === 'evaluator'
       ? (await this.getSystemSettings()).rubricWeights
       : [];
@@ -734,15 +853,25 @@ export class PortalRepository {
         if (submissionVideos.rows.some((item) => !item.admin_confirmed || item.admin_review_status !== 'accepted')) {
           throw new Error('Approve every video in this candidate upload before assigning it to a Manager / Employer.');
         }
-        if (submissionVideos.rows.some((item) => item.status === 'completed')) throw new Error('This submission has already been reviewed.');
         assignedVideoIds = submissionVideos.rows.map((item) => item.id);
-        const existingAssignments = await client.query(
-          'SELECT 1 FROM assignments WHERE video_id = ANY($1::text[]) LIMIT 1',
-          [assignedVideoIds],
-        );
-        if (existingAssignments.rowCount) throw new Error('This submission has already been assigned to a Manager / Employer.');
         candidateName = video.rows[0].candidate_name;
 
+        if (input.adminSupportingDocuments?.length) {
+          const documents = input.adminSupportingDocuments.map((document) => ({
+            ...document,
+            adminReviewStatus: 'accepted',
+            adminFeedback: '',
+          }));
+          await client.query(
+            `UPDATE videos SET details = jsonb_set(
+               details,
+               '{documents}',
+               COALESCE(details->'documents', '[]'::jsonb) || $2::jsonb,
+               true
+             ) WHERE id = ANY($1::text[])`,
+            [assignedVideoIds, JSON.stringify(documents)],
+          );
+        }
         const existingEvaluator = input.recipientEmail
           ? await client.query("SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND role = 'evaluator'", [input.recipientEmail])
           : { rowCount: 0, rows: [] };
@@ -757,16 +886,34 @@ export class PortalRepository {
             [evaluatorId, input.recipientName, input.recipientEmail.toLowerCase(), input.department],
           );
         }
+        const duplicateReviewerAssignment = await client.query(
+          'SELECT 1 FROM assignments WHERE video_id = ANY($1::text[]) AND evaluator_id = $2 LIMIT 1',
+          [assignedVideoIds, evaluatorId],
+        );
+        if (duplicateReviewerAssignment.rowCount) {
+          throw new Error('This submission has already been assigned to this Manager / Employer.');
+        }
       }
 
+      const questionPrompts = purpose === 'upload'
+        ? (input.questionPrompts && input.questionPrompts.length
+          ? input.questionPrompts.map((prompt) => prompt.trim()).filter(Boolean)
+          : typeof input.questionPrompt === 'string' && input.questionPrompt.trim()
+            ? [input.questionPrompt.trim()]
+            : [])
+        : [];
       const result = await client.query(
         `INSERT INTO share_links (id, submission_id, token_hash, token_ciphertext, token_preview, purpose, recipient_name, recipient_email,
-           role_applied, department, video_id, evaluator_id, notes, created_by, expires_at, rubric_weights)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+           role_applied, department, video_id, evaluator_id, notes, created_by, expires_at, answer_mode, video_count, question_prompt, rubric_weights)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
          RETURNING *`,
         [id, submissionId, input.tokenHash, input.tokenCiphertext, input.tokenPreview, purpose, input.recipientName, input.recipientEmail,
           input.roleApplied, input.department, input.assignedVideoId || null, evaluatorId,
-          input.notes, input.createdBy, input.expiresAt, JSON.stringify(rubricWeights)],
+          input.notes, input.createdBy, input.expiresAt,
+          purpose === 'upload' ? (input.answerMode === 'record' ? 'record' : 'upload') : 'upload',
+          purpose === 'upload' ? Math.max(1, Number(input.videoCount) || questionPrompts.length || 1) : 1,
+          purpose === 'upload' && questionPrompts.length ? JSON.stringify(questionPrompts) : null,
+          JSON.stringify(rubricWeights)],
       );
 
       if (purpose === 'review') {
@@ -791,6 +938,7 @@ export class PortalRepository {
   }
 
   async findInvite(tokenHash: string): Promise<ShareLinkRecord | null> {
+    await this.ensureShareLinkConfigColumns();
     await this.ensureShareLinkRubricColumn();
     const result = await this.pool.query(
       `SELECT sl.*, v.candidate_name, u.name AS evaluator_name
@@ -892,46 +1040,14 @@ export class PortalRepository {
       if (!videoResult.rowCount || (details.submissionId || details.submissionBatchId) !== link.submission_id) {
         throw new Error('This video does not have an active reupload request.');
       }
-
-      const assignmentResult = await client.query(
-        `SELECT a.id AS assignment_id, a.evaluator_id, u.name AS evaluator_name,
-                e.scores, e.overall_score, e.decision, e.notes, e.extra, e.submitted_at
-         FROM assignments a
-         JOIN users u ON u.id = a.evaluator_id
-         LEFT JOIN evaluations e ON e.assignment_id = a.id
-         WHERE a.video_id = $1
-         FOR UPDATE OF a`,
-        [videoId],
-      );
-      const managerRejection = assignmentResult.rows.find((row) => row.decision === 'rejected' || row.decision === 'reject');
       const adminRequestedReupload = videoResult.rows[0].admin_review_status === 'reupload_requested';
-      if (!adminRequestedReupload && !managerRejection) {
+      if (!adminRequestedReupload) {
         throw new Error('This video does not have an active reupload request.');
       }
-
-      const priorEvaluationHistory = managerRejection
-        ? [...(Array.isArray(details.evaluationHistory) ? details.evaluationHistory : []), {
-            evaluatorId: managerRejection.evaluator_id,
-            evaluatorName: managerRejection.evaluator_name,
-            evaluatedAt: managerRejection.submitted_at ? new Date(managerRejection.submitted_at).toISOString() : new Date().toISOString(),
-            overallScore: Number(managerRejection.overall_score || 0),
-            scores: managerRejection.scores || {},
-            decision: managerRejection.decision,
-            notes: managerRejection.notes || '',
-            aiSummary: managerRejection.extra?.aiSummary,
-            keyStrengths: managerRejection.extra?.keyStrengths,
-            areasToImprove: managerRejection.extra?.areasToImprove,
-            rubricWeights: managerRejection.extra?.rubricWeights,
-          }]
-        : Array.isArray(details.evaluationHistory) ? details.evaluationHistory : [];
 
       const nextDocuments = documents.length > 0
         ? documents.map((document) => ({ ...document, adminReviewStatus: 'pending', adminFeedback: '' }))
         : details.documents || [];
-      if (managerRejection) {
-        await client.query('DELETE FROM evaluations WHERE assignment_id = $1', [managerRejection.assignment_id]);
-        await client.query('DELETE FROM assignments WHERE id = $1', [managerRejection.assignment_id]);
-      }
       await client.query(
         `UPDATE videos
          SET file_path = $2, original_filename = $3, mime_type = $4, status = 'pending',
@@ -943,7 +1059,9 @@ export class PortalRepository {
           ...details,
           wasReuploaded: true,
           adminPreviousFeedback: videoResult.rows[0].admin_feedback || details.adminPreviousFeedback || '',
-          evaluationHistory: priorEvaluationHistory,
+          evaluationHistory: Array.isArray(details.evaluationHistory) ? details.evaluationHistory : [],
+          adminReviewScores: undefined,
+          adminOverallRating: undefined,
           documents: nextDocuments,
         })],
       );
@@ -987,7 +1105,8 @@ export class PortalRepository {
         "SELECT id, video_id FROM assignments WHERE share_link_id = $1 AND evaluator_id = $2 AND status <> 'completed' ORDER BY video_id FOR UPDATE",
         [link.id, link.evaluator_id],
       );
-      if (!assignmentResult.rowCount || !assignmentResult.rows.some((assignment) => assignment.video_id === input.videoId)) {
+      const assignment = assignmentResult.rows.find((item) => item.video_id === input.videoId);
+      if (!assignment) {
         throw new Error('No active assignment exists for this video and review link.');
       }
 
@@ -1001,23 +1120,27 @@ export class PortalRepository {
         areasToImprove: input.areasToImprove,
         rubricWeights,
       });
-      for (const assignment of assignmentResult.rows) {
-        await client.query(
-          `INSERT INTO evaluations (id, assignment_id, scores, overall_score, decision, notes, extra)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [randomUUID(), assignment.id, JSON.stringify(scores), overallScore,
-            input.decision, input.notes, evaluationValues],
-        );
-      }
       await client.query(
-        "UPDATE assignments SET status = 'completed', completed_at = NOW() WHERE share_link_id = $1 AND status <> 'completed'",
+        `INSERT INTO evaluations (id, assignment_id, scores, overall_score, decision, notes, extra)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [randomUUID(), assignment.id, JSON.stringify(scores), overallScore,
+          input.decision, input.notes, evaluationValues],
+      );
+      await client.query(
+        "UPDATE assignments SET status = 'completed', completed_at = NOW() WHERE id = $1",
+        [assignment.id],
+      );
+      await client.query(
+        "UPDATE videos SET status = 'completed' WHERE id = $1",
+        [input.videoId],
+      );
+      const pendingAssignments = await client.query(
+        "SELECT 1 FROM assignments WHERE share_link_id = $1 AND status <> 'completed' LIMIT 1",
         [link.id],
       );
-      await client.query(
-        "UPDATE videos SET status = 'completed' WHERE id = ANY($1::text[])",
-        [assignmentResult.rows.map((assignment) => assignment.video_id)],
-      );
-      await client.query("UPDATE share_links SET status = 'used' WHERE id = $1", [link.id]);
+      if (!pendingAssignments.rowCount) {
+        await client.query("UPDATE share_links SET status = 'used' WHERE id = $1", [link.id]);
+      }
       await client.query('COMMIT');
       return (await this.getVideo(input.videoId))!;
     } catch (error) {

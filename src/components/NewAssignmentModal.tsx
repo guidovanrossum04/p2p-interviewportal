@@ -98,14 +98,14 @@ export const NewAssignmentModal: React.FC<NewAssignmentModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {isLoadingVideos && (
-            <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">Loading submissions ready for assignment...</p>
+            <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">Loading submissions ready for assignment...</p>
           )}
           {loadError && (
             <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">{loadError}</p>
           )}
           {!isLoadingVideos && !loadError && assignableVideos.length === 0 && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              No submissions are ready. Every video in a submission must be approved and not already assigned.
+              No submissions are ready. Every video in a submission must be approved. Previously reviewed submissions can be assigned to a different employer.
             </p>
           )}
           {evaluators.length === 0 && (

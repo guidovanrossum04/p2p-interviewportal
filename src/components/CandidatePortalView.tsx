@@ -1,7 +1,77 @@
 import React, { useState } from 'react';
-import { CandidateVideo, InviteLink, User } from '../types';
+import { Camera, Upload } from 'lucide-react';
+import { CandidateAnswerMode, CandidateVideo, InviteLink, User } from '../types';
 import { SelfIntroUploadModal } from './SelfIntroUploadModal';
-import { groupVideosBySubmission } from '../utils/submissions';
+import { CandidateVideoResponseInput } from './CandidateVideoResponseInput';
+import p2pLogo from '../../assets/p2plogo.webp';
+
+interface RequestedRetakeProps {
+  video: CandidateVideo;
+  linkToken?: string;
+  answerMode: CandidateAnswerMode;
+  onUploaded: (video: CandidateVideo, emailNotice?: string) => void;
+}
+
+const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, linkToken, answerMode, onUploaded }) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitRetake = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!file || !linkToken) {
+      setError('Choose the requested replacement video.');
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('candidateName', video.candidateName);
+      formData.append('candidateEmail', video.candidateEmail);
+      formData.append('roleApplied', video.roleApplied);
+      formData.append('department', video.department);
+      formData.append('answerMode', answerMode);
+      formData.append('submissionType', video.submissionType || 'self_introduction');
+      formData.append('bio', video.bio || '');
+      formData.append('keySkills', (video.keySkills || []).join(','));
+      formData.append('videos', file);
+      const response = await fetch(`/api/public/links/${encodeURIComponent(linkToken)}/reupload/${encodeURIComponent(video.id)}`, {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not upload the requested replacement video.');
+      if (!result.video) throw new Error('The server did not confirm the replacement upload.');
+      onUploaded(result.video as CandidateVideo, typeof result.emailNotice === 'string' ? result.emailNotice : '');
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Could not upload the requested replacement video.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submitRetake} className="rounded-xl border border-red-300 bg-red-50/50 p-4">
+      <p className="text-[10px] font-extrabold uppercase tracking-wide text-red-700">Admin requested a retake</p>
+      <h3 className="mt-1 text-xs font-bold leading-5 text-[#101010]">{video.questionPrompt || 'Requested video response'}</h3>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <CandidateVideoResponseInput
+            answerMode={answerMode}
+            questionNumber={1}
+            answer={file}
+            onChange={setFile}
+          />
+        </div>
+        <button type="submit" disabled={!file || isSubmitting || !linkToken} className="rounded-xl bg-red-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
+          {isSubmitting ? 'Submitting...' : answerMode === 'record' ? 'Submit recorded video' : 'Upload replacement video'}
+        </button>
+      </div>
+      {error && <p role="alert" className="mt-2 text-xs font-semibold text-red-700">{error}</p>}
+    </form>
+  );
+};
 
 interface CandidatePortalViewProps {
   currentUser: User;
@@ -12,86 +82,6 @@ interface CandidatePortalViewProps {
   canCreateSubmission?: boolean;
 }
 
-interface ReuploadRequestProps {
-  video: CandidateVideo;
-  currentUser: User;
-  linkToken?: string;
-  requestReason?: string;
-  feedback?: string;
-  onUploaded: (video: CandidateVideo, emailNotice?: string) => void;
-}
-
-const ReuploadRequest: React.FC<ReuploadRequestProps> = ({
-  video,
-  currentUser,
-  linkToken,
-  requestReason = 'Admin requested a replacement',
-  feedback,
-  onUploaded,
-}) => {
-  const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const submitReupload = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!file || !linkToken) {
-      setError('Choose the replacement video using your upload link.');
-      return;
-    }
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append('candidateName', currentUser.name);
-      formData.append('candidateEmail', currentUser.email);
-      formData.append('roleApplied', video.roleApplied);
-      formData.append('department', video.department);
-      formData.append('submissionType', video.submissionType || 'self_introduction');
-      formData.append('bio', video.bio || '');
-      formData.append('keySkills', (video.keySkills || []).join(','));
-      formData.append('videos', file);
-      const response = await fetch(
-        `/api/public/links/${encodeURIComponent(linkToken)}/reupload/${encodeURIComponent(video.id)}`,
-        { method: 'POST', body: formData },
-      );
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Could not upload the replacement video.');
-      if (!result.video) throw new Error('The server did not confirm the replacement upload.');
-      onUploaded(result.video as CandidateVideo, typeof result.emailNotice === 'string' ? result.emailNotice : '');
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Could not upload the replacement video.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submitReupload} className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 space-y-3">
-      <div>
-        <h3 className="text-sm font-bold text-amber-950">{requestReason}</h3>
-        <p className="text-xs text-amber-900 mt-1">{feedback || video.adminFeedback || 'Please upload a replacement video for review.'}</p>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-        <label className="flex-1 text-xs font-semibold text-[#101010]">
-          Replacement video
-          <input
-            required
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime"
-            onChange={(event) => setFile(event.target.files?.[0] || null)}
-            className="mt-1 block w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs"
-          />
-        </label>
-        <button type="submit" disabled={!file || isSubmitting || !linkToken} className="px-4 py-2.5 rounded-xl bg-amber-700 text-white text-xs font-bold disabled:opacity-50">
-          {isSubmitting ? 'Uploading...' : 'Submit replacement'}
-        </button>
-      </div>
-      {error && <p role="alert" className="text-xs font-semibold text-red-700">{error}</p>}
-    </form>
-  );
-};
-
 export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
   currentUser,
   videos,
@@ -101,146 +91,98 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
   canCreateSubmission = true,
 }) => {
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [replacementSubmittedIds, setReplacementSubmittedIds] = useState<string[]>([]);
-  const candidateVideos = videos.filter((video) =>
+  const [submissionReceived, setSubmissionReceived] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const requestedRetakes = videos.filter((video) =>
     video.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()
-    || video.candidateName.toLowerCase() === currentUser.name.toLowerCase()
+    && video.adminReviewStatus === 'reupload_requested'
   );
+  const activeUploadLink = uploadLinks.find((link) => link.token === linkToken) || uploadLinks[0];
+  const currentUploads = videos.filter((video) =>
+    video.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()
+  );
+  const uploadStatusLabel = (video: CandidateVideo) => {
+    if (video.adminReviewStatus === 'reupload_requested') return 'Retake requested';
+    if (video.adminReviewStatus === 'accepted') return 'Approved';
+    if (video.adminConfirmed) return 'Reviewed';
+    if (video.status === 'completed') return 'Reviewed';
+    return 'Submitted · awaiting review';
+  };
+  const canSubmitNewVideos = canCreateSubmission && !submissionReceived && activeUploadLink?.status === 'active';
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <header className="bg-white p-6 rounded-2xl border border-[#E8E5E1] shadow-xs">
-        <span className="px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 text-[11px] font-bold border border-red-200">
-          Candidate Assessment Hub
-        </span>
-        <h2 className="mt-3 text-2xl font-extrabold text-[#101010]">Welcome, {currentUser.name}</h2>
-        <p className="text-xs text-red-900/60 mt-1">Your dashboard shows upload access and any action requested by the recruitment team.</p>
+        <h2 className="text-2xl font-extrabold text-[#101010]">Welcome, {currentUser.name}</h2>
+        <p className="text-xs text-red-900/60 mt-1">Use your active invitation to upload the requested video responses.</p>
       </header>
 
-      <section className="bg-white border border-[#E8E5E1] rounded-2xl p-5 space-y-3">
-        <div>
-          <h3 className="text-sm font-bold text-[#101010]">Your video upload links</h3>
-        </div>
-        {uploadLinks.length === 0 ? (
-          <p className="rounded-xl bg-gray-50 p-4 text-xs text-[#8A8580]">No upload link is associated with this session.</p>
-        ) : (
-          <ul className="divide-y divide-red-50">
-            {uploadLinks.map((link) => {
-              const active = link.status === 'active' && new Date(link.expiresAt) > new Date();
-              return (
-                <li key={link.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-                  <div>
-                    <p className="text-xs font-bold text-[#101010]">Video submission access</p>
-                    <p className="text-[11px] text-[#8A8580]">Expires {new Date(link.expiresAt).toLocaleString()}</p>
-                  </div>
-                  <span className={`self-start px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {active ? 'Active' : 'Inactive'}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-bold text-[#101010]">Submission status and admin feedback</h3>
-          <p className="text-[11px] text-[#8A8580] mt-0.5">Return using this same link to view approval or reupload decisions.</p>
-        </div>
-        {groupVideosBySubmission(candidateVideos).map((submission) => (
-          <div key={submission.id} className="rounded-2xl border border-[#E8E5E1] bg-red-50/30 p-3 space-y-3">
-          <p className="px-1 text-[10px] font-bold uppercase tracking-wide text-[#8A8580]">
-            {submission.videos.length} video{submission.videos.length === 1 ? '' : 's'}
-          </p>
-          {submission.videos.some((video) => video.status === 'completed' && (video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject')) && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900">
-            <p className="text-xs font-bold">Manager / Employer decision: this submission was rejected</p>
-            <p className="mt-1 text-[11px]">This decision applies to the whole submission, not to individual videos.</p>
-            {submission.videos.find((video) => video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject')?.evaluation?.notes && (
-              <p className="mt-2 whitespace-pre-wrap text-xs">
-                {submission.videos.find((video) => video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject')?.evaluation?.notes}
-              </p>
-            )}
+      {currentUploads.length > 0 && (
+        <section className="overflow-hidden rounded-2xl border border-[#E8E5E1] bg-white">
+          <div className="border-b border-[#E8E5E1] px-5 py-4">
+            <h3 className="text-sm font-bold text-[#101010]">Your submitted videos</h3>
           </div>
-          )}
-          {submission.videos.map((video, index) => {
-          const managerRejected = video.status === 'completed' && (video.evaluation?.decision === 'rejected' || video.evaluation?.decision === 'reject');
-          const awaitingReupload = video.adminReviewStatus === 'reupload_requested'
-            || managerRejected;
-          const canReupload = awaitingReupload && !replacementSubmittedIds.includes(video.id);
-          const approved = !managerRejected && video.adminReviewStatus === 'accepted' && video.adminConfirmed;
-          const reuploadedAwaitingApproval = video.wasReuploaded && video.adminReviewStatus === 'pending';
-          const status = approved
-            ? 'Approved'
-            : managerRejected
-            ? 'Replacement available'
-            : video.adminReviewStatus === 'reupload_requested'
-            ? 'Reupload requested'
-            : reuploadedAwaitingApproval
-            ? 'Replacement received · waiting for admin approval'
-            : 'Awaiting admin review';
-          return (
-            <article key={video.id} className={`rounded-xl border p-4 space-y-3 ${
-              approved ? 'border-emerald-200 bg-emerald-50/60'
-                : video.adminReviewStatus === 'reupload_requested' ? 'border-amber-200 bg-amber-50/60'
-                : 'border-[#E8E5E1] bg-white'
-            }`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-xs font-bold text-[#101010]">{video.questionPrompt || `Video ${index + 1}`} · {video.roleApplied}</h4>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                  approved ? 'bg-emerald-100 text-emerald-800'
-                    : video.adminReviewStatus === 'reupload_requested' ? 'bg-amber-100 text-amber-900'
-                    : 'bg-gray-100 text-gray-700'
-                }`}>{status}</span>
-              </div>
-              {video.adminFeedback && (
-                <div className={`rounded-lg p-3 text-xs ${
-                  approved ? 'bg-white text-emerald-950' : 'bg-white text-amber-950'
+          <ul className="divide-y divide-[#F1EEEA] px-5">
+            {currentUploads.map((video, index) => (
+              <li key={video.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-[#101010]">
+                    Video {index + 1}{video.questionPrompt ? ` · ${video.questionPrompt}` : ''}
+                  </p>
+                  {video.adminFeedback && video.adminReviewStatus === 'reupload_requested' && (
+                    <p className="mt-1 whitespace-pre-wrap text-[11px] text-[#101010]">
+                      Admin feedback: {video.adminFeedback}
+                    </p>
+                  )}
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                  video.adminReviewStatus === 'accepted'
+                    ? 'bg-emerald-50 text-emerald-800'
+                    : video.adminReviewStatus === 'reupload_requested'
+                    ? 'bg-amber-50 text-amber-900'
+                    : 'bg-[#F5F2EE] text-[#101010]'
                 }`}>
-                  <p className="font-bold">{approved ? 'Admin approval message' : 'Admin feedback'}</p>
-                  <p className="mt-1 whitespace-pre-wrap">{video.adminFeedback}</p>
-                </div>
-              )}
-              {video.previousAdminFeedback && video.wasReuploaded && (
-                <div className="rounded-lg bg-white/80 p-3 text-xs text-[#8A8580]">
-                  <p className="font-bold">Previous reupload request</p>
-                  <p className="mt-1 whitespace-pre-wrap">{video.previousAdminFeedback}</p>
-                </div>
-              )}
-              {canReupload && (
-                <ReuploadRequest
-                  video={video}
-                  currentUser={currentUser}
-                  linkToken={linkToken}
-                  requestReason={managerRejected ? 'A replacement video is requested after review' : 'A replacement video was requested'}
-                  feedback={managerRejected ? video.evaluation?.notes : video.adminFeedback}
-                  onUploaded={(replacement, emailNotice) => {
-                    setReplacementSubmittedIds((ids) => [...ids, video.id]);
-                    onUploadNewVideos?.([replacement], emailNotice);
-                  }}
-                />
-              )}
-            </article>
-          );
-          })}
-          </div>
-        ))}
-        {candidateVideos.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-[#E8E5E1] bg-white p-6 text-center">
-            <span className="material-symbols-outlined text-2xl text-[#8A8580]">hourglass_empty</span>
-            <p className="mt-1 text-xs font-semibold text-[#101010]">Your submitted videos will appear here with their review status.</p>
-          </div>
-        )}
-      </section>
+                  {uploadStatusLabel(video)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      {canCreateSubmission && (
+      {requestedRetakes.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-sm font-bold text-[#101010]">Videos requested by the admin</h3>
+          {requestedRetakes.map((video) => (
+            <RequestedRetake
+              key={video.id}
+              video={video}
+              linkToken={linkToken}
+              answerMode={activeUploadLink?.answerMode || 'upload'}
+              onUploaded={(replacement) => {
+                onUploadNewVideos?.([replacement]);
+                setSubmissionReceived(true);
+                setShowSuccessModal(true);
+              }}
+            />
+          ))}
+        </section>
+      )}
+
+      {canSubmitNewVideos && (
         <div className="bg-white border border-[#E8E5E1] rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-[#101010]">Ready to submit?</h3>
-            <p className="text-[11px] text-[#8A8580] mt-0.5">Upload your requested video and supporting documents using the active invitation.</p>
+            <p className="text-[11px] text-[#8A8580] mt-0.5">
+              {activeUploadLink?.answerMode === 'record'
+                ? 'Record the requested video responses using the active invitation.'
+                : 'Upload the requested video responses using the active invitation.'}
+            </p>
           </div>
-          <button type="button" onClick={() => setShowUploadModal(true)} className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold">
-            Upload submission
+          <button type="button" onClick={() => setShowUploadModal(true)} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-red-700">
+            {activeUploadLink?.answerMode === 'record'
+              ? <Camera aria-hidden="true" className="h-4 w-4" />
+              : <Upload aria-hidden="true" className="h-4 w-4" />}
+            {activeUploadLink?.answerMode === 'record' ? 'Record submission' : 'Upload submission'}
           </button>
         </div>
       )}
@@ -249,9 +191,30 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
         <SelfIntroUploadModal
           currentUser={currentUser}
           linkToken={linkToken}
+          requiredVideoCount={activeUploadLink?.videoCount || 1}
+          questionPrompt={activeUploadLink?.questionPrompts?.length ? activeUploadLink.questionPrompts : activeUploadLink?.questionPrompt}
+          answerMode={activeUploadLink?.answerMode || 'upload'}
           onClose={() => setShowUploadModal(false)}
-          onSubmit={(newVideos, emailNotice) => onUploadNewVideos?.(newVideos, emailNotice)}
+          onSubmit={(newVideos) => {
+            onUploadNewVideos?.(newVideos);
+            setSubmissionReceived(true);
+            setShowSuccessModal(true);
+          }}
         />
+      )}
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" role="presentation">
+          <div role="status" aria-live="polite" className="w-full max-w-md rounded-2xl border border-[#E8E5E1] bg-white p-8 text-center shadow-2xl">
+            <img src={p2pLogo} alt="P2P Recruitment" className="mx-auto mb-4 h-14 w-auto object-contain" />
+            <span className="material-symbols-outlined text-4xl text-emerald-700" aria-hidden="true">check_circle</span>
+            <h2 className="mt-2 text-lg font-extrabold text-[#101010]">Thank you for your submission!</h2>
+            <p className="mt-2 text-sm text-[#101010]">P2P will contact you after your submission has been reviewed.</p>
+            <button type="button" onClick={() => setShowSuccessModal(false)} className="mt-6 rounded-xl bg-[#101010] px-5 py-2.5 text-xs font-bold text-white hover:bg-red-700">
+              Done
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

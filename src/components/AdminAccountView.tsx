@@ -198,8 +198,8 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
                     user.role === 'evaluator'
                       ? 'border-red-200 bg-red-50 text-red-700'
                       : user.role === 'candidate'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-purple-200 bg-purple-50 text-purple-700'
+                      ? 'border-gray-200 bg-gray-50 text-gray-700'
+                      : 'border-gray-200 bg-gray-900 text-white'
                   }`}>
                     {user.role === 'evaluator' ? 'Manager / Employer' : user.role}
                   </span>
