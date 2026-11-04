@@ -18,8 +18,8 @@ export class PortalService {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.recipientEmail.trim())) {
       throw new PortalError('A valid recipient email address is required to send the invitation.');
     }
-    if (input.type === 'evaluator' && !input.assignedVideoId) {
-      throw new PortalError('Choose an evaluator and a video for the review link.');
+    if (input.type === 'evaluator' && !input.assignedVideoId && !input.assignedVideoIds?.length) {
+      throw new PortalError('Choose an evaluator and at least one candidate submission for the review link.');
     }
     const expiresAt = new Date(input.expiresAt);
     if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) throw new PortalError('Choose a future expiry date and time.');

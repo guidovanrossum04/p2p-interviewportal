@@ -30,14 +30,23 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024, files: 26 },
   fileFilter: (_request, file, callback) => {
     const mimeType = file.mimetype.split(';', 1)[0].trim().toLowerCase();
+    const videoTypeByExtension: Record<string, string> = {
+      '.mp4': 'video/mp4',
+      '.webm': 'video/webm',
+      '.mov': 'video/quicktime',
+    };
+    const extensionType = videoTypeByExtension[path.extname(file.originalname).toLowerCase()];
     const acceptedTypes = file.fieldname === 'videos'
       ? ['video/mp4', 'video/webm', 'video/quicktime']
       : ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
-    if (!acceptedTypes.includes(mimeType)) {
+    const normalizedMimeType = file.fieldname === 'videos'
+      ? extensionType || mimeType
+      : mimeType;
+    if (!acceptedTypes.includes(normalizedMimeType)) {
       callback(new PortalError('Upload an MP4, WebM, or MOV video.'));
       return;
     }
-    file.mimetype = mimeType;
+    file.mimetype = normalizedMimeType;
     callback(null, true);
   },
 });
@@ -276,6 +285,19 @@ export function createPortalRouter(): Router {
     } catch (error) { next(error); }
   });
 
+  router.patch('/users/:id/status', async (request, response, next) => {
+    try {
+      const status = request.body?.status;
+      if (status !== 'active' && status !== 'inactive') {
+        throw new PortalError('User status must be active or inactive.');
+      }
+      if (!await repository.setUserStatus(request.params.id, status)) {
+        return response.status(404).json({ error: 'User not found or cannot be deactivated.' });
+      }
+      response.json({ success: true, status });
+    } catch (error) { next(error); }
+  });
+
   router.delete('/users/:id', async (request, response, next) => {
     try {
       if (!await repository.deleteUser(request.params.id)) return response.status(404).json({ error: 'User not found.' });
@@ -290,7 +312,7 @@ export function createPortalRouter(): Router {
 
   router.get('/invites', async (request, response, next) => {
     try {
-      const { page, limit, type, status, search } = request.query;
+      const { page, limit, type, status, search, view } = request.query;
       const pageNumber = Number(page) > 0 ? Number(page) : 1;
       const pageLimit = Math.min(50, Number(limit) > 0 ? Number(limit) : 10);
       const result = await repository.listInvites({
@@ -299,6 +321,7 @@ export function createPortalRouter(): Router {
         type: typeof type === 'string' ? type : undefined,
         status: typeof status === 'string' ? status : undefined,
         search: typeof search === 'string' ? search : undefined,
+        view: view === 'archived' || view === 'blocked' ? view : 'active',
       });
       response.json({ ...result, page: pageNumber, limit: pageLimit });
     } catch (error) { next(error); }
@@ -314,6 +337,7 @@ export function createPortalRouter(): Router {
         roleApplied = '',
         department = '',
         assignedVideoId,
+        assignedVideoIds,
         expiresAt,
         notes = '',
         createdBy = '',
@@ -337,6 +361,19 @@ export function createPortalRouter(): Router {
           throw new PortalError('The selected interview questions are invalid.');
         }
       }
+      let parsedAssignedVideoIds: unknown = assignedVideoIds;
+      if (typeof assignedVideoIds === 'string') {
+        try {
+          parsedAssignedVideoIds = JSON.parse(assignedVideoIds);
+        } catch {
+          throw new PortalError('The selected candidate submissions are invalid.');
+        }
+      }
+      if (parsedAssignedVideoIds !== undefined
+        && (!Array.isArray(parsedAssignedVideoIds)
+          || !parsedAssignedVideoIds.every((videoId): videoId is string => typeof videoId === 'string' && Boolean(videoId.trim())))) {
+        throw new PortalError('The selected candidate submissions are invalid.');
+      }
       const invite = await service.createInvite({
         type,
         recipientName: String(recipientName || ''),
@@ -344,6 +381,7 @@ export function createPortalRouter(): Router {
         roleApplied: String(roleApplied),
         department: String(department),
         assignedVideoId,
+        assignedVideoIds: Array.isArray(parsedAssignedVideoIds) ? parsedAssignedVideoIds : undefined,
         expiresAt: String(expiresAt || ''),
         notes: String(notes),
         createdBy: String(createdBy),
@@ -390,6 +428,26 @@ export function createPortalRouter(): Router {
   router.post('/invites/:id/revoke', async (request, response, next) => {
     try {
       if (!await repository.markInviteRevoked(request.params.id)) return response.status(404).json({ error: 'Active link not found.' });
+      response.json({ success: true });
+    } catch (error) { next(error); }
+  });
+
+  router.post('/invites/:id/archive', async (request, response, next) => {
+    try {
+      const archived = request.body?.archived;
+      if (typeof archived !== 'boolean') throw new PortalError('Archive status must be true or false.');
+      if (!await repository.setInviteArchived(request.params.id, archived)) {
+        return response.status(404).json({ error: 'Access link not found.' });
+      }
+      response.json({ success: true, archived });
+    } catch (error) { next(error); }
+  });
+
+  router.delete('/invites/:id', async (request, response, next) => {
+    try {
+      if (!await repository.deleteInvite(request.params.id)) {
+        return response.status(404).json({ error: 'Access link not found.' });
+      }
       response.json({ success: true });
     } catch (error) { next(error); }
   });

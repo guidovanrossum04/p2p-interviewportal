@@ -18,7 +18,7 @@ let currentActivities: ActivityItem[] = [...initialActivities];
 let currentSettings: SystemSettings = { ...initialSettings };
 let currentInviteLinks: InviteLink[] = [...initialInviteLinks];
 
-const ADMIN_EMAIL = 'p2precruitment2025@gmail.com';
+const ADMIN_EMAIL = 'ivornorth@p2precruitment.com.au';
 const ADMIN_PASSWORD = 'Sachin@99#';
 const adminSessions = new Map<string, number>();
 

@@ -154,9 +154,19 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
           });
           const candidateReviewHistory = [...reviewHistoryById.values()]
             .sort((left, right) => new Date(right.evaluatedAt).getTime() - new Date(left.evaluatedAt).getTime());
-          const supportingDocuments = new Map(
-            batchVideos.flatMap((video) => (video.documents || []).map((document) => [document.id, { document, video }] as const)),
-          );
+          const supportingDocuments = new Map<string, { document: NonNullable<CandidateVideo['documents']>[number]; video: CandidateVideo }>();
+          batchVideos.forEach((video) => {
+            (video.documents || []).forEach((document) => {
+              const documentKey = [
+                document.name.trim().toLocaleLowerCase(),
+                document.mimeType.trim().toLocaleLowerCase(),
+                document.size,
+              ].join(':');
+              if (!supportingDocuments.has(documentKey)) {
+                supportingDocuments.set(documentKey, { document, video });
+              }
+            });
+          });
           const employerEvaluation = batchVideos.find((video) => video.evaluation)?.evaluation;
           const employerReviewed = batchVideos.every((video) => video.status === 'completed' && video.evaluation);
           const employerReviewGroups = new Map<string, CandidateEvaluation[]>();

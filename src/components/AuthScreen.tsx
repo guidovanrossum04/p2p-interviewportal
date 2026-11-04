@@ -19,7 +19,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [activePortal, setActivePortal] = useState<'admin' | 'evaluator' | 'candidate'>('admin');
 
   // Admin form
-  const [adminEmail, setAdminEmail] = useState('p2precruitment2025@gmail.com');
+  const [adminEmail, setAdminEmail] = useState('ivornorth@p2precruitment.com.au');
   const [adminPassword, setAdminPassword] = useState('');
 
   // Evaluator form
@@ -112,7 +112,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       const result = await response.json().catch(() => ({}));
       throw new Error(result.error || 'Invalid admin credentials.');
     } catch (error) {
-      const fallbackEmail = 'p2precruitment2025@gmail.com';
+      const fallbackEmail = 'ivornorth@p2precruitment.com.au';
       const fallbackPassword = 'Sachin@99#';
       if (emailLower === fallbackEmail.toLowerCase() && adminPassword === fallbackPassword) {
         onLogin('admin', fallbackEmail, 'P2P Admin');
@@ -229,7 +229,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     required
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="p2precruitment2025@gmail.com"
+                    placeholder="ivornorth@p2precruitment.com.au"
                     className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#F5F2EE]/50 focus:bg-white"
                   />
                 </div>
@@ -264,7 +264,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
               <div className="pt-3 border-t border-red-50 text-center">
                 <p className="text-[11px] text-red-900/70">
-                  Admin Account: <strong>P2P Admin</strong> (<code>p2precruitment2025@gmail.com</code>)
+                  Admin Account: <strong>P2P Admin</strong> (<code>ivornorth@p2precruitment.com.au</code>)
                 </p>
               </div>
             </div>

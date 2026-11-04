@@ -182,6 +182,7 @@ export interface InviteLink {
   department?: string;
   assignedVideoId?: string;
   assignedCandidateName?: string;
+  assignedSubmissionCount?: number;
   submissionId?: string;
   rubricWeights?: RubricWeight[];
   status: 'active' | 'used' | 'revoked' | 'expired';
@@ -198,4 +199,5 @@ export interface InviteLink {
   accessCount?: number;
   emailSent?: boolean;
   emailNotice?: string;
+  archivedAt?: string;
 }

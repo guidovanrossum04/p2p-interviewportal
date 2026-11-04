@@ -65,7 +65,7 @@ export class EmailService {
     const safeUrl = escapeHtml(linkUrl);
     const action = candidateInvite
       ? invite.answerMode === 'record' ? 'record your requested video responses' : 'upload your requested video responses'
-      : 'review the assigned candidate submission';
+      : `review ${invite.assignedSubmissionCount && invite.assignedSubmissionCount > 1 ? 'the assigned candidate submissions' : 'the assigned candidate submission'}`;
     const noteSubject = invite.notes?.match(/^Subject Line:\s*(.+)$/im)?.[1]?.trim();
     const subject = candidateInvite
       ? noteSubject || `Video submission link: ${invite.roleApplied || 'Candidate role'}`

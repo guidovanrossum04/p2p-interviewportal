@@ -13,6 +13,7 @@ export interface CreateInviteInput {
   roleApplied: string;
   department: string;
   assignedVideoId?: string;
+  assignedVideoIds?: string[];
   expiresAt: Date;
   notes: string;
   createdBy: string;
@@ -57,6 +58,7 @@ export interface ShareLinkRecord {
   evaluator_id: string | null;
   evaluator_name?: string | null;
   candidate_name?: string | null;
+  assigned_submission_count?: number;
   status: 'active' | 'used' | 'revoked';
   notes: string;
   created_by: string;
@@ -70,6 +72,8 @@ export interface ShareLinkRecord {
   video_count?: number | null;
   question_prompt?: string | null;
   rubric_weights?: RubricWeight[];
+  archived_at?: Date | null;
+  deleted_at?: Date | null;
 }
 
 export interface SubmissionPageFilters {
@@ -201,6 +205,7 @@ const inviteFromRow = (row: ShareLinkRecord, token?: string): InviteLink => {
     department: row.department,
     assignedVideoId: row.video_id || undefined,
     assignedCandidateName: row.candidate_name || undefined,
+    assignedSubmissionCount: Number(row.assigned_submission_count) || undefined,
     submissionId: row.submission_id,
     ...(row.purpose === 'upload' ? {
       answerMode: row.answer_mode === 'record' ? 'record' : 'upload',
@@ -218,6 +223,7 @@ const inviteFromRow = (row: ShareLinkRecord, token?: string): InviteLink => {
     createdBy: row.created_by,
     notes: row.notes,
     accessCount: Number(row.access_count),
+    ...(row.archived_at ? { archivedAt: new Date(row.archived_at).toISOString() } : {}),
   };
 };
 
@@ -295,6 +301,7 @@ export class PortalRepository {
 
   private settingsTableReady?: Promise<void>;
   private shareLinkConfigReady?: Promise<void>;
+  private shareLinkLifecycleReady?: Promise<void>;
   private shareLinkRubricReady?: Promise<void>;
   private evaluationDecisionReady?: Promise<void>;
   private multipleEmployerAssignmentsReady?: Promise<void>;
@@ -337,6 +344,19 @@ export class PortalRepository {
       });
     }
     return this.shareLinkConfigReady;
+  }
+
+  private ensureShareLinkLifecycleColumns(): Promise<void> {
+    if (!this.shareLinkLifecycleReady) {
+      this.shareLinkLifecycleReady = this.pool.query(`
+        ALTER TABLE share_links ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+        ALTER TABLE share_links ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      `).then(() => undefined).catch((error) => {
+        this.shareLinkLifecycleReady = undefined;
+        throw error;
+      });
+    }
+    return this.shareLinkLifecycleReady;
   }
 
   private ensureShareLinkRubricColumn(): Promise<void> {
@@ -439,14 +459,14 @@ export class PortalRepository {
        FROM users u LEFT JOIN assignments a ON a.evaluator_id = u.id
        WHERE ($1::text IS NULL OR u.role = $1)
          AND ($2::text IS NULL OR u.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%'
-              OR (u.role = 'admin' AND ('P2P Admin' ILIKE '%' || $2 || '%' OR 'p2precruitment2025@gmail.com' ILIKE '%' || $2 || '%')))
+              OR (u.role = 'admin' AND ('P2P Admin' ILIKE '%' || $2 || '%' OR 'ivornorth@p2precruitment.com.au' ILIKE '%' || $2 || '%')))
        GROUP BY u.id ORDER BY u.created_at DESC`,
       [role && role !== 'all' ? role : null, search?.trim() || null],
     );
     return result.rows.map((row) => {
       const user = userFromRow(row);
       return user.role === 'admin'
-        ? { ...user, name: 'P2P Admin', email: 'p2precruitment2025@gmail.com' }
+        ? { ...user, name: 'P2P Admin', email: 'ivornorth@p2precruitment.com.au' }
         : user;
     });
   }
@@ -580,6 +600,14 @@ export class PortalRepository {
     } finally {
       client.release();
     }
+  }
+
+  async setUserStatus(id: string, status: 'active' | 'inactive'): Promise<boolean> {
+    const result = await this.pool.query(
+      "UPDATE users SET status = $2 WHERE id = $1 AND role <> 'admin'",
+      [id, status],
+    );
+    return Boolean(result.rowCount);
   }
 
   async listVideos(filters: { status?: string; evaluatorId?: string; search?: string }): Promise<CandidateVideo[]> {
@@ -757,36 +785,47 @@ export class PortalRepository {
     type?: string;
     status?: string;
     search?: string;
+    view?: 'active' | 'archived' | 'blocked';
   }): Promise<{ items: InviteLink[]; total: number }> {
+    await this.ensureShareLinkLifecycleColumns();
     const values = [
       filters.type && filters.type !== 'all' ? filters.type : null,
       filters.status && filters.status !== 'all' ? filters.status : null,
+      filters.view || 'active',
       filters.search?.trim() || null,
       filters.limit,
       (filters.page - 1) * filters.limit,
     ];
-    const where = `($1::text IS NULL OR sl.purpose = CASE WHEN $1 = 'candidate' THEN 'upload' ELSE 'review' END)
+    const where = `sl.deleted_at IS NULL
+      AND ($1::text IS NULL OR sl.purpose = CASE WHEN $1 = 'candidate' THEN 'upload' ELSE 'review' END)
       AND ($2::text IS NULL
         OR ($2 = 'active' AND sl.status = 'active' AND sl.expires_at > NOW())
         OR ($2 = 'inactive' AND (sl.status <> 'active' OR sl.expires_at <= NOW())))
-      AND ($3::text IS NULL OR sl.recipient_name ILIKE '%' || $3 || '%'
-        OR sl.recipient_email ILIKE '%' || $3 || '%'
-        OR sl.role_applied ILIKE '%' || $3 || '%'
-        OR v.candidate_name ILIKE '%' || $3 || '%')`;
+      AND (($3 = 'active' AND sl.archived_at IS NULL AND sl.status <> 'revoked')
+        OR ($3 = 'archived' AND sl.archived_at IS NOT NULL)
+        OR ($3 = 'blocked' AND sl.archived_at IS NULL AND sl.status = 'revoked'))
+      AND ($4::text IS NULL OR sl.recipient_name ILIKE '%' || $4 || '%'
+        OR sl.recipient_email ILIKE '%' || $4 || '%'
+        OR sl.role_applied ILIKE '%' || $4 || '%'
+        OR v.candidate_name ILIKE '%' || $4 || '%')`;
     const [itemsResult, countResult] = await Promise.all([
       this.pool.query(
-        `SELECT sl.*, v.candidate_name, u.name AS evaluator_name
+        `SELECT sl.*, v.candidate_name, u.name AS evaluator_name,
+                (SELECT COUNT(DISTINCT COALESCE(assigned_video.details->>'submissionId', assigned_video.details->>'submissionBatchId', assigned_video.id))::int
+                 FROM assignments link_assignment
+                 JOIN videos assigned_video ON assigned_video.id = link_assignment.video_id
+                 WHERE link_assignment.share_link_id = sl.id) AS assigned_submission_count
          FROM share_links sl LEFT JOIN videos v ON v.id = sl.video_id
          LEFT JOIN users u ON u.id = sl.evaluator_id
          WHERE ${where}
-         ORDER BY sl.created_at DESC LIMIT $4 OFFSET $5`,
+         ORDER BY sl.created_at DESC LIMIT $5 OFFSET $6`,
         values,
       ),
       this.pool.query(
         `SELECT COUNT(*)::int AS total
          FROM share_links sl LEFT JOIN videos v ON v.id = sl.video_id
          WHERE ${where}`,
-        values.slice(0, 3),
+        values.slice(0, 4),
       ),
     ]);
     return {
@@ -799,12 +838,17 @@ export class PortalRepository {
   }
 
   async getInviteForNotification(id: string): Promise<InviteLink | null> {
+    await this.ensureShareLinkLifecycleColumns();
     const result = await this.pool.query(
-      `SELECT sl.*, v.candidate_name, u.name AS evaluator_name
+      `SELECT sl.*, v.candidate_name, u.name AS evaluator_name,
+              (SELECT COUNT(DISTINCT COALESCE(assigned_video.details->>'submissionId', assigned_video.details->>'submissionBatchId', assigned_video.id))::int
+               FROM assignments link_assignment
+               JOIN videos assigned_video ON assigned_video.id = link_assignment.video_id
+               WHERE link_assignment.share_link_id = sl.id) AS assigned_submission_count
        FROM share_links sl
        LEFT JOIN videos v ON v.id = sl.video_id
        LEFT JOIN users u ON u.id = sl.evaluator_id
-       WHERE sl.id = $1`,
+       WHERE sl.id = $1 AND sl.deleted_at IS NULL`,
       [id],
     );
     if (!result.rowCount) return null;
@@ -828,34 +872,43 @@ export class PortalRepository {
       let evaluatorId: string | null = null;
       let candidateName: string | null = null;
       let assignedVideoIds: string[] = [];
+      let linkVideoId: string | null = null;
+      let assignedSubmissionCount = 0;
       const id = randomUUID();
       let submissionId = id;
       const purpose = input.type === 'candidate' ? 'upload' : 'review';
 
       if (purpose === 'review') {
-        if (!input.assignedVideoId) throw new Error('Select a video to assign to the evaluator.');
-        const video = await client.query('SELECT candidate_name, details FROM videos WHERE id = $1 FOR UPDATE', [input.assignedVideoId]);
-        if (!video.rowCount) throw new Error('The selected video does not exist.');
-        const batchId = video.rows[0].details?.submissionId
-          || video.rows[0].details?.submissionBatchId
-          || input.assignedVideoId;
-        submissionId = batchId;
-        const submissionVideos = batchId
-          ? await client.query(
-              `SELECT id, status, admin_confirmed, admin_review_status FROM videos
-               WHERE COALESCE(details->>'submissionId', details->>'submissionBatchId', id) = $1 FOR UPDATE`,
-              [batchId],
-            )
-          : await client.query(
-              'SELECT id, status, admin_confirmed, admin_review_status FROM videos WHERE id = $1 FOR UPDATE',
-              [input.assignedVideoId],
-            );
+        const selectedVideoIds = [...new Set(input.assignedVideoIds?.length
+          ? input.assignedVideoIds
+          : input.assignedVideoId ? [input.assignedVideoId] : [])];
+        if (!selectedVideoIds.length) throw new Error('Select at least one candidate submission to assign to the evaluator.');
+        const selectedVideos = await client.query(
+          'SELECT id, candidate_name, details FROM videos WHERE id = ANY($1::text[]) FOR UPDATE',
+          [selectedVideoIds],
+        );
+        if (selectedVideos.rowCount !== selectedVideoIds.length) throw new Error('One or more selected submissions could not be found.');
+        const selectedSubmissionIds = [...new Set(selectedVideos.rows.map((selectedVideo) =>
+          selectedVideo.details?.submissionId || selectedVideo.details?.submissionBatchId || selectedVideo.id
+        ))];
+        if (selectedSubmissionIds.length !== 1) {
+          throw new Error('Assign one candidate submission per Manager / Employer review link.');
+        }
+        assignedSubmissionCount = selectedSubmissionIds.length;
+        submissionId = selectedSubmissionIds[0];
+        const video = selectedVideos.rows[0];
+        linkVideoId = video.id;
+        candidateName = video.candidate_name;
+        const submissionVideos = await client.query(
+          `SELECT id, status, admin_confirmed, admin_review_status FROM videos
+           WHERE COALESCE(details->>'submissionId', details->>'submissionBatchId', id) = ANY($1::text[])
+           FOR UPDATE`,
+          [selectedSubmissionIds],
+        );
         if (submissionVideos.rows.some((item) => !item.admin_confirmed || item.admin_review_status !== 'accepted')) {
           throw new Error('Approve every video in this candidate upload before assigning it to a Manager / Employer.');
         }
         assignedVideoIds = submissionVideos.rows.map((item) => item.id);
-        candidateName = video.rows[0].candidate_name;
-
         if (input.adminSupportingDocuments?.length) {
           const documents = input.adminSupportingDocuments.map((document) => ({
             ...document,
@@ -873,9 +926,12 @@ export class PortalRepository {
           );
         }
         const existingEvaluator = input.recipientEmail
-          ? await client.query("SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND role = 'evaluator'", [input.recipientEmail])
+          ? await client.query("SELECT id, status FROM users WHERE LOWER(email) = LOWER($1) AND role = 'evaluator'", [input.recipientEmail])
           : { rowCount: 0, rows: [] };
         if (existingEvaluator.rowCount) {
+          if (existingEvaluator.rows[0].status === 'inactive') {
+            throw new Error('This Manager / Employer account is inactive and cannot receive assignments.');
+          }
           evaluatorId = existingEvaluator.rows[0].id;
           await client.query('UPDATE users SET name = $2, department = $3 WHERE id = $1', [evaluatorId, input.recipientName, input.department]);
         } else {
@@ -908,7 +964,7 @@ export class PortalRepository {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
          RETURNING *`,
         [id, submissionId, input.tokenHash, input.tokenCiphertext, input.tokenPreview, purpose, input.recipientName, input.recipientEmail,
-          input.roleApplied, input.department, input.assignedVideoId || null, evaluatorId,
+          input.roleApplied, input.department, linkVideoId, evaluatorId,
           input.notes, input.createdBy, input.expiresAt,
           purpose === 'upload' ? (input.answerMode === 'record' ? 'record' : 'upload') : 'upload',
           purpose === 'upload' ? Math.max(1, Number(input.videoCount) || questionPrompts.length || 1) : 1,
@@ -928,7 +984,11 @@ export class PortalRepository {
       }
 
       await client.query('COMMIT');
-      return inviteFromRow({ ...result.rows[0], candidate_name: candidateName }, input.tokenPreview);
+      return inviteFromRow({
+        ...result.rows[0],
+        candidate_name: candidateName,
+        assigned_submission_count: assignedSubmissionCount,
+      }, input.tokenPreview);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -940,10 +1000,20 @@ export class PortalRepository {
   async findInvite(tokenHash: string): Promise<ShareLinkRecord | null> {
     await this.ensureShareLinkConfigColumns();
     await this.ensureShareLinkRubricColumn();
+    await this.ensureShareLinkLifecycleColumns();
     const result = await this.pool.query(
       `SELECT sl.*, v.candidate_name, u.name AS evaluator_name
        FROM share_links sl LEFT JOIN videos v ON v.id = sl.video_id
-       LEFT JOIN users u ON u.id = sl.evaluator_id WHERE sl.token_hash = $1`,
+       LEFT JOIN users u ON u.id = sl.evaluator_id
+       WHERE sl.token_hash = $1 AND sl.deleted_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM users blocked_user
+           WHERE blocked_user.status = 'inactive'
+             AND (
+               blocked_user.id = sl.evaluator_id
+               OR (sl.purpose = 'upload' AND LOWER(blocked_user.email) = LOWER(sl.recipient_email))
+             )
+         )`,
       [tokenHash],
     );
     if (!result.rowCount) return null;
@@ -973,17 +1043,28 @@ export class PortalRepository {
   }
 
   async createCandidateVideos(tokenHash: string, input: UploadInput): Promise<CandidateVideo[]> {
+    await this.ensureShareLinkLifecycleColumns();
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       const linkResult = await client.query(
-        "SELECT * FROM share_links WHERE token_hash = $1 FOR UPDATE",
+        `SELECT * FROM share_links sl
+         WHERE sl.token_hash = $1 AND sl.deleted_at IS NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM users blocked_user
+             WHERE blocked_user.status = 'inactive'
+               AND (
+                 blocked_user.id = sl.evaluator_id
+                 OR (sl.purpose = 'upload' AND LOWER(blocked_user.email) = LOWER(sl.recipient_email))
+               )
+           )
+         FOR UPDATE OF sl`,
         [tokenHash],
       );
       const link = linkResult.rows[0] as ShareLinkRecord | undefined;
-      if (!link || link.purpose !== 'upload' || link.status !== 'active' || new Date(link.expires_at) <= new Date()) {
-        throw new Error('This upload link is invalid, expired, or already used.');
-      }
+      if (!link || link.purpose !== 'upload') throw new Error('This upload link is invalid.');
+      if (link.status !== 'active') throw new Error('This upload link has already been used or revoked.');
+      if (new Date(link.expires_at) <= new Date()) throw new Error('This upload link has expired.');
 
       await client.query(
         `INSERT INTO users (id, name, email, role, department, title)
@@ -1025,10 +1106,24 @@ export class PortalRepository {
   }
 
   async replaceRequestedVideo(tokenHash: string, videoId: string, video: UploadInput['videos'][number], documents: UploadInput['documents']): Promise<CandidateVideo> {
+    await this.ensureShareLinkLifecycleColumns();
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const linkResult = await client.query('SELECT * FROM share_links WHERE token_hash = $1 FOR UPDATE', [tokenHash]);
+      const linkResult = await client.query(
+        `SELECT * FROM share_links sl
+         WHERE sl.token_hash = $1 AND sl.deleted_at IS NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM users blocked_user
+             WHERE blocked_user.status = 'inactive'
+               AND (
+                 blocked_user.id = sl.evaluator_id
+                 OR (sl.purpose = 'upload' AND LOWER(blocked_user.email) = LOWER(sl.recipient_email))
+               )
+           )
+         FOR UPDATE OF sl`,
+        [tokenHash],
+      );
       const link = linkResult.rows[0] as ShareLinkRecord | undefined;
       if (!link || link.purpose !== 'upload' || link.status !== 'used') throw new Error('This reupload link is invalid.');
 
@@ -1078,12 +1173,23 @@ export class PortalRepository {
   async submitEvaluation(tokenHash: string, input: EvaluationInput): Promise<CandidateVideo> {
     await this.ensureShareLinkRubricColumn();
     await this.ensureEvaluationDecisionConstraint();
+    await this.ensureShareLinkLifecycleColumns();
     const currentRubricWeights = (await this.getSystemSettings()).rubricWeights;
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       const linkResult = await client.query(
-        "SELECT * FROM share_links WHERE token_hash = $1 FOR UPDATE",
+        `SELECT * FROM share_links sl
+         WHERE sl.token_hash = $1 AND sl.deleted_at IS NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM users blocked_user
+             WHERE blocked_user.status = 'inactive'
+               AND (
+                 blocked_user.id = sl.evaluator_id
+                 OR (sl.purpose = 'upload' AND LOWER(blocked_user.email) = LOWER(sl.recipient_email))
+               )
+           )
+         FOR UPDATE OF sl`,
         [tokenHash],
       );
       const link = linkResult.rows[0] as ShareLinkRecord | undefined;
@@ -1190,13 +1296,38 @@ export class PortalRepository {
   }
 
   async markInviteRevoked(id: string): Promise<boolean> {
-    const result = await this.pool.query("UPDATE share_links SET status = 'revoked' WHERE id = $1 AND status = 'active'", [id]);
+    await this.ensureShareLinkLifecycleColumns();
+    const result = await this.pool.query(
+      "UPDATE share_links SET status = 'revoked' WHERE id = $1 AND status = 'active' AND deleted_at IS NULL",
+      [id],
+    );
+    return Boolean(result.rowCount);
+  }
+
+  async setInviteArchived(id: string, archived: boolean): Promise<boolean> {
+    await this.ensureShareLinkLifecycleColumns();
+    const result = await this.pool.query(
+      'UPDATE share_links SET archived_at = CASE WHEN $2 THEN NOW() ELSE NULL END WHERE id = $1 AND deleted_at IS NULL',
+      [id, archived],
+    );
+    return Boolean(result.rowCount);
+  }
+
+  async deleteInvite(id: string): Promise<boolean> {
+    await this.ensureShareLinkLifecycleColumns();
+    const result = await this.pool.query(
+      `UPDATE share_links
+       SET deleted_at = NOW(), status = CASE WHEN status = 'active' THEN 'revoked' ELSE status END
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [id],
+    );
     return Boolean(result.rowCount);
   }
 
   async extendInviteExpiry(id: string, expiresAt: Date): Promise<boolean> {
+    await this.ensureShareLinkLifecycleColumns();
     const result = await this.pool.query(
-      "UPDATE share_links SET expires_at = $2 WHERE id = $1 AND status = 'active'",
+      "UPDATE share_links SET expires_at = $2 WHERE id = $1 AND status = 'active' AND deleted_at IS NULL",
       [id, expiresAt],
     );
     return Boolean(result.rowCount);

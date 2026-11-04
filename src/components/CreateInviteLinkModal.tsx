@@ -51,6 +51,7 @@ interface CreateInviteLinkModalProps {
     roleApplied?: string;
     department?: string;
     assignedVideoId?: string;
+    assignedVideoIds?: string[];
     expiresAt: string;
     notes?: string;
     answerMode?: CandidateAnswerMode;
@@ -80,12 +81,13 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
   const [candidateResults, setCandidateResults] = useState<Array<{ name: string; email: string; roleApplied?: string }>>([]);
   const [isSearchingCandidates, setIsSearchingCandidates] = useState(false);
   const [candidateSearchError, setCandidateSearchError] = useState<string | null>(null);
-  const [roleApplied, setRoleApplied] = useState('Senior Frontend Engineer');
+  const [roleApplied, setRoleApplied] = useState('');
+  const [customRoleApplied, setCustomRoleApplied] = useState('');
   const [answerMode, setAnswerMode] = useState<CandidateAnswerMode>('upload');
   const [selectedQuestionIndexes, setSelectedQuestionIndexes] = useState<number[]>(candidateQuestions.map((_, index) => index));
   const [isQuestionDropdownOpen, setIsQuestionDropdownOpen] = useState(false);
   const [adminSupportingDocuments, setAdminSupportingDocuments] = useState<File[]>([]);
-  const [assignedVideoId, setAssignedVideoId] = useState('');
+  const [assignedVideoIds, setAssignedVideoIds] = useState<string[]>([]);
   const selectedQuestionPrompts = selectedQuestionIndexes.map((index) => candidateQuestions[index]).filter(Boolean);
   const derivedVideoCount = selectedQuestionPrompts.length || 1;
   const [expiresAt, setExpiresAt] = useState(() => toDateTimeLocalValue(new Date(Date.now() + 48 * 60 * 60 * 1000)));
@@ -114,14 +116,15 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
       .then((submissionVideos) => {
         const representatives = groupVideosBySubmission(submissionVideos).map((submission) => submission.videos[0]);
         setAssignableVideos(submissionVideos);
-        setAssignedVideoId((current) => representatives.some((video) => video.id === current)
-          ? current
-          : representatives[0]?.id || '');
+        setAssignedVideoIds((current) => {
+          const validIds = current.filter((videoId) => representatives.some((video) => video.id === videoId));
+          return validIds.length ? validIds : representatives[0] ? [representatives[0].id] : [];
+        });
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
           setAssignableVideos([]);
-          setAssignedVideoId('');
+          setAssignedVideoIds([]);
           setAssignableVideosError(error instanceof Error ? error.message : 'Could not load submissions ready for assignment.');
         }
       })
@@ -184,7 +187,6 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
   const handleCandidateSelect = (candidate: { name: string; email: string; roleApplied?: string }) => {
     setRecipientName(candidate.name);
     setRecipientEmail(candidate.email);
-    if (candidate.roleApplied) setRoleApplied(candidate.roleApplied);
     setCandidateSearch(candidate.name);
     setCandidateResults([]);
     setIsCandidateSearchFocused(false);
@@ -209,9 +211,10 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
         type,
         recipientName,
         recipientEmail,
-        roleApplied,
+        roleApplied: type === 'candidate' && roleApplied === 'Other' ? customRoleApplied : roleApplied,
         department: '',
-        assignedVideoId: type === 'evaluator' ? assignedVideoId : undefined,
+        assignedVideoId: type === 'evaluator' ? assignedVideoIds[0] : undefined,
+        assignedVideoIds: type === 'evaluator' ? assignedVideoIds : undefined,
         expiresAt: expiryDate.toISOString(),
         notes,
         answerMode: type === 'candidate' ? answerMode : undefined,
@@ -296,6 +299,8 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     type="button"
                     onClick={() => {
                       setType('candidate');
+                      setRoleApplied('');
+                      setCustomRoleApplied('');
                       setExpiresAt(toDateTimeLocalValue(new Date(Date.now() + 48 * 60 * 60 * 1000)));
                     }}
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
@@ -315,6 +320,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     type="button"
                     onClick={() => {
                       setType('evaluator');
+                      setRoleApplied('');
                       setExpiresAt(toDateTimeLocalValue(new Date(Date.now() + 24 * 60 * 60 * 1000)));
                     }}
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
@@ -458,14 +464,41 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 <label className="block text-xs font-semibold text-[#101010] mb-1">
                   {type === 'candidate' ? 'Target Position *' : 'Role / Focus *'}
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Senior Frontend Engineer"
-                  value={roleApplied}
-                  onChange={(e) => setRoleApplied(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
-                />
+                {type === 'candidate' ? (
+                  <>
+                    <select
+                      required
+                      value={roleApplied}
+                      onChange={(event) => setRoleApplied(event.target.value)}
+                      className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                    >
+                      <option value="" disabled>Select a target position</option>
+                      <option value="Overseas Pharmacist">Overseas Pharmacist</option>
+                      <option value="Senior Pharmacist">Senior Pharmacist</option>
+                      <option value="Pharmacist">Pharmacist</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    {roleApplied === 'Other' && (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Enter target position"
+                        value={customRoleApplied}
+                        onChange={(event) => setCustomRoleApplied(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter role or focus"
+                    value={roleApplied}
+                    onChange={(event) => setRoleApplied(event.target.value)}
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
+                  />
+                )}
               </div>
 
               {type === 'candidate' && (
@@ -612,7 +645,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
               {type === 'evaluator' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#101010] mb-1">
-                    Approved Candidate Submission *
+                    Approved Candidate Submissions *
                   </label>
                   {isLoadingAssignableVideos ? (
                     <p className="mb-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">Loading submissions ready for assignment...</p>
@@ -623,20 +656,21 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                       No submissions are ready. Every video in a submission must be approved. Previously reviewed submissions can be assigned to a different employer.
                     </p>
                   )}
+                  <p className="mb-2 text-[11px] text-[#5A5550]">Choose one submission for this link. You can create separate links to assign it to other Managers / Employers.</p>
                   <select
                     required
-                    disabled={isLoadingAssignableVideos || Boolean(assignableVideosError) || assignableVideos.length === 0}
-                    value={assignedVideoId}
-                    onChange={(e) => setAssignedVideoId(e.target.value)}
-                    className="w-full rounded-xl border border-[#E8E5E1] px-3 py-2 text-xs text-[#101010] focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white cursor-pointer"
+                    disabled={isLoadingAssignableVideos || Boolean(assignableVideosError) || assignableSubmissions.length === 0}
+                    value={assignedVideoIds[0] || ''}
+                    onChange={(event) => setAssignedVideoIds(event.target.value ? [event.target.value] : [])}
+                    className="w-full rounded-xl border border-[#E8E5E1] bg-white px-3 py-2 text-xs text-[#101010] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                   >
-                    <option value="">-- Select a submitted video --</option>
+                    <option value="">-- Select one approved submission --</option>
                     {assignableSubmissions.map(({ id, videos: submissionVideos }) => {
                       const representative = submissionVideos[0];
                       return (
-                      <option key={id} value={representative.id}>
-                        {representative.candidateName} — {representative.roleApplied} ({submissionVideos.length} video{submissionVideos.length === 1 ? '' : 's'} · {id})
-                      </option>
+                        <option key={id} value={representative.id}>
+                          {representative.candidateName} — {representative.roleApplied} ({submissionVideos.length} video{submissionVideos.length === 1 ? '' : 's'})
+                        </option>
                       );
                     })}
                   </select>
@@ -715,7 +749,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || !recipientName}
+                  disabled={isSubmitting || !recipientName || (type === 'evaluator' && assignedVideoIds.length === 0)}
                   className="px-5 py-2 bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white rounded-xl font-bold transition-all shadow-xs shadow-red-500/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-base">link</span>
@@ -744,6 +778,12 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                     {createdInvite.recipientName} ({createdInvite.recipientEmail || 'Direct link'})
                   </span>
                 </div>
+                {createdInvite.type === 'evaluator' && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-[#101010] uppercase text-[10px]">Submissions</span>
+                    <span className="font-semibold text-[#101010]">{assignedVideoIds.length} candidate submissions</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-[#101010] uppercase text-[10px]">Valid Until</span>

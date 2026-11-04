@@ -9,6 +9,7 @@ interface AdminAccountViewProps {
   searchQuery: string;
   onAddUser: (role: Exclude<UserRole, 'admin'>) => void;
   onDeleteUser: (user: User) => void;
+  onSetUserStatus: (user: User, status: 'active' | 'inactive') => Promise<boolean>;
   onCleanupComplete: () => Promise<unknown>;
 }
 
@@ -19,6 +20,7 @@ export const AdminAccountView: React.FC<AdminAccountViewProps> = ({
   searchQuery,
   onAddUser,
   onDeleteUser,
+  onSetUserStatus,
   onCleanupComplete,
 }) => (
   <AdminAccountContent
@@ -28,6 +30,7 @@ export const AdminAccountView: React.FC<AdminAccountViewProps> = ({
     searchQuery={searchQuery}
     onAddUser={onAddUser}
     onDeleteUser={onDeleteUser}
+    onSetUserStatus={onSetUserStatus}
     onCleanupComplete={onCleanupComplete}
   />
 );
@@ -39,6 +42,7 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
   searchQuery,
   onAddUser,
   onDeleteUser,
+  onSetUserStatus,
   onCleanupComplete,
 }) => {
   const [search, setSearch] = useState('');
@@ -177,15 +181,16 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
               <th className="px-6 py-3">Name</th>
               <th className="px-6 py-3">Email</th>
               <th className="px-6 py-3">Role</th>
+              <th className="px-6 py-3">Status</th>
               <th className="px-6 py-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E8E5E1] text-xs">
             {isLoadingUsers ? (
-              <tr><td colSpan={4} className="px-6 py-8 text-center text-[#8A8580]">Searching users...</td></tr>
+              <tr><td colSpan={5} className="px-6 py-8 text-center text-[#8A8580]">Searching users...</td></tr>
             ) : listedUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-[#8A8580]">
+                <td colSpan={5} className="px-6 py-8 text-center text-[#8A8580]">
                   {users.length ? 'No users match your search and filter.' : 'No users have been added yet.'}
                 </td>
               </tr>
@@ -204,17 +209,55 @@ const AdminAccountContent: React.FC<AdminAccountViewProps> = ({
                     {user.role === 'evaluator' ? 'Manager / Employer' : user.role}
                   </span>
                 </td>
+                <td className="px-6 py-4">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
+                    user.status === 'active'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : user.status === 'inactive'
+                      ? 'border-gray-200 bg-gray-100 text-gray-700'
+                      : 'border-amber-200 bg-amber-50 text-amber-700'
+                  }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${
+                      user.status === 'active' ? 'bg-emerald-600' : user.status === 'inactive' ? 'bg-gray-500' : 'bg-amber-500'
+                    }`} />
+                    {user.status}
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-right">
                   {user.role !== 'admin' && (
-                    <button
-                      type="button"
-                      onClick={() => onDeleteUser(user)}
-                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-50"
-                      aria-label={`Delete ${user.role} account for ${user.name}`}
-                    >
-                      <span className="material-symbols-outlined text-base">delete</span>
-                      Delete
-                    </button>
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const nextStatus = user.status === 'active' ? 'inactive' : 'active';
+                          if (nextStatus === 'inactive'
+                            && !window.confirm(`Mark ${user.name} inactive? Their share-link access will be blocked until they are reactivated.`)) return;
+                          if (await onSetUserStatus(user, nextStatus)) {
+                            setListedUsers((previous) => previous.map((item) => item.id === user.id
+                              ? { ...item, status: nextStatus }
+                              : item));
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-bold ${
+                          user.status === 'active'
+                            ? 'text-amber-800 hover:bg-amber-50'
+                            : 'text-emerald-700 hover:bg-emerald-50'
+                        }`}
+                        aria-label={`${user.status === 'active' ? 'Mark inactive' : 'Reactivate'} ${user.name}`}
+                      >
+                        <span className="material-symbols-outlined text-base">{user.status === 'active' ? 'block' : 'check_circle'}</span>
+                        {user.status === 'active' ? 'Mark inactive' : 'Reactivate'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteUser(user)}
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-50"
+                        aria-label={`Delete ${user.role} account for ${user.name}`}
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                        Delete
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>

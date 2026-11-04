@@ -59,11 +59,15 @@ CREATE TABLE IF NOT EXISTS share_links (
   rubric_weights JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ NOT NULL,
+  archived_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
   CHECK ((purpose = 'upload' AND video_id IS NULL AND evaluator_id IS NULL) OR
          (purpose = 'review' AND video_id IS NOT NULL AND evaluator_id IS NOT NULL))
 );
 
 ALTER TABLE share_links ADD COLUMN IF NOT EXISTS rubric_weights JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE share_links ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+ALTER TABLE share_links ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS assignments (
   id TEXT PRIMARY KEY,

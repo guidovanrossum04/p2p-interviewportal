@@ -211,8 +211,10 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
                   return (
                     <tr
                       key={submissionId}
-                      onClick={() => onSelectCandidateVideo(reviewVideo)}
-                      className="hover:bg-rose-50/30 transition-colors group cursor-pointer"
+                      onClick={() => {
+                        if (!isCompleted) onSelectCandidateVideo(reviewVideo);
+                      }}
+                      className={`hover:bg-rose-50/30 transition-colors group ${isCompleted ? '' : 'cursor-pointer'}`}
                     >
                       {/* Candidate with avatar initials */}
                       <td className="px-6 py-4">
@@ -259,16 +261,19 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
 
                       {/* Action */}
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectCandidateVideo(reviewVideo);
-                          }}
-                          className="text-red-600 hover:text-red-800 font-bold flex items-center gap-1 ml-auto cursor-pointer"
-                        >
-                          <span>{isCompleted ? 'View Score' : isInReview ? 'Continue' : 'Start Review'}</span>
-                          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                        </button>
+                        {!isCompleted && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectCandidateVideo(reviewVideo);
+                            }}
+                            className="text-red-600 hover:text-red-800 font-bold flex items-center gap-1 ml-auto cursor-pointer"
+                          >
+                            <span>{isInReview ? 'Continue' : 'Start Review'}</span>
+                            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

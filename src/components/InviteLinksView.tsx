@@ -9,11 +9,13 @@ interface InviteLinksViewProps {
   pageSize: number;
   total: number;
   isLoading: boolean;
-  onQueryChange: (page: number, type: string, status: string, search: string) => void;
+  onQueryChange: (page: number, type: string, search: string, view: 'active' | 'archived' | 'blocked') => void;
   onReviewVideo: (video: CandidateVideo) => void;
   onOpenCreateLink: () => void;
-  onRevokeLink: (id: string) => Promise<void>;
   onExtendExpiry: (id: string, expiresAt: string) => Promise<void>;
+  onArchiveLink: (id: string, archived: boolean) => Promise<boolean>;
+  onBlockLink: (id: string) => Promise<boolean>;
+  onDeleteLink: (id: string) => Promise<boolean>;
 }
 
 const toDateTimeLocalValue = (date: Date) => {
@@ -31,24 +33,25 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
   onQueryChange,
   onReviewVideo,
   onOpenCreateLink,
-  onRevokeLink,
   onExtendExpiry,
+  onArchiveLink,
+  onBlockLink,
+  onDeleteLink,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'candidate' | 'evaluator'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [filterView, setFilterView] = useState<'active' | 'archived' | 'blocked'>('active');
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyErrorId, setCopyErrorId] = useState<string | null>(null);
   const [editingExpiryId, setEditingExpiryId] = useState<string | null>(null);
   const [expiryDraft, setExpiryDraft] = useState('');
   const [expiryError, setExpiryError] = useState<string | null>(null);
-  const [expandedDetailsId, setExpandedDetailsId] = useState<string | null>(null);
   const [reviewingInviteId, setReviewingInviteId] = useState<string | null>(null);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => onQueryChange(page, filterType, filterStatus, search), 250);
+    const timeout = window.setTimeout(() => onQueryChange(1, filterType, search, filterView), 250);
     return () => window.clearTimeout(timeout);
-  }, [page, filterType, filterStatus, search, onQueryChange]);
+  }, [filterType, search, filterView, onQueryChange]);
 
   const getFullUrl = (token: string, type: InviteType) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -75,8 +78,8 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
     return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   };
 
-  const candidateLinksCount = inviteLinks.filter((l) => l.type === 'candidate').length;
-  const evaluatorLinksCount = inviteLinks.filter((l) => l.type === 'evaluator').length;
+  const candidateLinksCount = inviteLinks.filter((link) => link.type === 'candidate').length;
+  const evaluatorLinksCount = inviteLinks.filter((link) => link.type === 'evaluator').length;
   const activeCount = inviteLinks.filter((link) => link.status === 'active' && new Date(link.expiresAt) > new Date()).length;
 
   return (
@@ -153,7 +156,6 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             type="button"
             onClick={() => {
               setFilterType('all');
-              onQueryChange(1, 'all', filterStatus, search);
             }}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
               filterType === 'all'
@@ -167,7 +169,6 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             type="button"
             onClick={() => {
               setFilterType('candidate');
-              onQueryChange(1, 'candidate', filterStatus, search);
             }}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
               filterType === 'candidate'
@@ -176,13 +177,12 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-xs">video_camera_front</span>
-            Candidate Uploads ({candidateLinksCount})
+            Candidate Links
           </button>
           <button
             type="button"
             onClick={() => {
               setFilterType('evaluator');
-              onQueryChange(1, 'evaluator', filterStatus, search);
             }}
             className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
               filterType === 'evaluator'
@@ -191,22 +191,25 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-xs">rate_review</span>
-            Manager / Employer Reviews ({evaluatorLinksCount})
+            Employer Links
           </button>
         </div>
 
         <div className="flex gap-1.5 p-1 bg-gray-50 rounded-xl border border-gray-200 w-full sm:w-auto">
-          {(['all', 'active', 'inactive'] as const).map((status) => (
+          {([
+            { id: 'active', label: 'Active links', icon: 'link' },
+            { id: 'archived', label: 'Archived', icon: 'archive' },
+            { id: 'blocked', label: 'Blocked', icon: 'block' },
+          ] as const).map((view) => (
             <button
-              key={status}
+              key={view.id}
               type="button"
-              onClick={() => {
-                setFilterStatus(status);
-                onQueryChange(1, filterType, status, search);
-              }}
-              className={`px-3 py-1.5 rounded-lg font-semibold capitalize ${filterStatus === status ? 'bg-[#101010] text-white' : 'text-[#8A8580] hover:text-[#101010]'}`}
+              aria-pressed={filterView === view.id}
+              onClick={() => setFilterView(view.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold ${filterView === view.id ? 'bg-[#101010] text-white' : 'text-[#8A8580] hover:text-[#101010]'}`}
             >
-              {status === 'all' ? 'All Status' : status}
+              <span className="material-symbols-outlined text-sm">{view.icon}</span>
+              {view.label}
             </button>
           ))}
         </div>
@@ -218,7 +221,6 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              onQueryChange(1, filterType, filterStatus, e.target.value);
             }}
             placeholder="Search invitees, positions..."
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E8E5E1] text-xs focus:ring-1 focus:ring-red-500 focus:border-red-500 focus:outline-none bg-white"
@@ -266,10 +268,11 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                   const isRevoked = link.status === 'revoked';
                   const isUsed = link.status === 'used';
                   const isExpired = new Date(link.expiresAt) < new Date();
-                  const canExtend = !isRevoked && !isUsed;
-                  const canShare = Boolean(link.token) && !link.token.startsWith('...');
+                  const isArchived = Boolean(link.archivedAt);
+                  const canExtend = !isRevoked && !isUsed && !isArchived;
+                  const canShare = Boolean(link.token) && !link.token.startsWith('...') && !isRevoked;
                   const submissionVideos = videos.filter((video) => getSubmissionId(video) === (link.submissionId || link.id));
-                  const statusLabel = isRevoked ? 'Revoked' : isUsed ? 'Submitted' : isExpired ? 'Expired' : 'Active';
+                  const statusLabel = isRevoked ? 'Blocked' : isUsed ? 'Submitted' : isExpired ? 'Expired' : 'Active';
                   const statusClass = isRevoked
                     ? 'bg-gray-100 text-gray-700'
                     : isUsed
@@ -296,14 +299,27 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                           <p className="mt-0.5 text-[10px] text-[#8A8580]">{link.recipientEmail || 'No email provided'}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="font-semibold text-[#101010]">{link.assignedCandidateName || link.roleApplied || '—'}</p>
+                          <p className="font-semibold text-[#101010]">
+                            {link.assignedSubmissionCount && link.assignedSubmissionCount > 1
+                              ? `${link.assignedSubmissionCount} candidate submissions`
+                              : link.assignedCandidateName || link.roleApplied || '—'}
+                          </p>
                           {link.assignedCandidateName && link.roleApplied && (
                             <p className="mt-0.5 text-[10px] text-[#8A8580]">{link.roleApplied}</p>
                           )}
                           {isCandidate && submissionVideos.length > 0 && (
-                            <p className="mt-1 text-[10px] font-medium text-[#5A5550]">
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <p className="text-[10px] font-medium text-[#5A5550]">
                               {submissionVideos.filter((video) => video.adminReviewStatus === 'accepted').length}/{submissionVideos.length} videos approved
                             </p>
+                            <button
+                              type="button"
+                              onClick={() => setReviewingInviteId(link.id)}
+                              className="text-[10px] font-bold text-red-700 hover:text-red-900"
+                            >
+                              Review submissions
+                            </button>
+                          </div>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -321,19 +337,10 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                               disabled={!canShare}
                               title={canShare ? 'Copy share link' : 'This older link cannot be copied.'}
                               onClick={() => { if (canShare) void handleCopy(link.id, link.token, link.type); }}
-                              className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                              aria-label={copiedId === link.id ? 'Link copied' : 'Copy share link'}
+                              className="rounded-lg bg-red-600 p-1.5 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                             >
                               <span className="material-symbols-outlined text-[14px]">{copiedId === link.id ? 'done' : 'content_copy'}</span>
-                              {copiedId === link.id ? 'Copied' : 'Copy'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setExpandedDetailsId(expandedDetailsId === link.id ? null : link.id)}
-                              title="View link details"
-                              aria-label={expandedDetailsId === link.id ? 'Hide link details' : 'View link details'}
-                              className="rounded-lg border border-[#E8E5E1] p-1.5 text-[#5A5550] hover:bg-[#F5F2EE]"
-                            >
-                              <span className="material-symbols-outlined block text-[16px]">{expandedDetailsId === link.id ? 'expand_less' : 'info'}</span>
                             </button>
                             {canExtend && (
                               <button
@@ -351,20 +358,49 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                                 <span className="material-symbols-outlined block text-[16px]">event</span>
                               </button>
                             )}
-                            {!isRevoked && (
+                            <button
+                              type="button"
+                              title={isArchived ? 'Restore from archive' : 'Archive link'}
+                              aria-label={isArchived ? 'Restore from archive' : 'Archive link'}
+                              onClick={async () => {
+                                if (await onArchiveLink(link.id, !isArchived)) {
+                                  await onQueryChange(page, filterType, search, filterView);
+                                }
+                              }}
+                              className="rounded-lg border border-[#E8E5E1] p-1.5 text-[#5A5550] hover:bg-[#F5F2EE]"
+                            >
+                              <span className="material-symbols-outlined block text-[16px]">{isArchived ? 'unarchive' : 'archive'}</span>
+                            </button>
+                            {filterView !== 'blocked' && !isUsed && !isRevoked && (
                               <button
                                 type="button"
+                                title="Block link access"
+                                aria-label="Block link access"
                                 onClick={async () => {
-                                  await onRevokeLink(link.id);
-                                  await onQueryChange(page, filterType, filterStatus, search);
+                                  if (!window.confirm(`Block access for ${link.recipientName}?`)) return;
+                                  if (await onBlockLink(link.id)) {
+                                    await onQueryChange(page, filterType, search, filterView);
+                                  }
                                 }}
-                                title="Revoke link access"
-                                aria-label="Revoke link access"
-                                className="rounded-lg border border-[#E8E5E1] p-1.5 text-[#8A8580] hover:bg-red-50 hover:text-red-700"
+                                className="rounded-lg border border-rose-200 p-1.5 text-rose-700 hover:bg-rose-50"
                               >
                                 <span className="material-symbols-outlined block text-[16px]">block</span>
                               </button>
                             )}
+                            <button
+                              type="button"
+                              title="Delete link"
+                              aria-label="Delete link"
+                              onClick={async () => {
+                                if (!window.confirm(`Delete the link for ${link.recipientName}? This will permanently disable the link.`)) return;
+                                if (await onDeleteLink(link.id)) {
+                                  await onQueryChange(page, filterType, search, filterView);
+                                }
+                              }}
+                              className="rounded-lg border border-rose-200 p-1.5 text-rose-700 hover:bg-rose-50"
+                            >
+                              <span className="material-symbols-outlined block text-[16px]">delete</span>
+                            </button>
                           </div>
                           {copyErrorId === link.id && <p role="alert" className="mt-1 text-right text-[10px] text-red-700">Clipboard access failed.</p>}
                           {editingExpiryId === link.id && (
@@ -383,7 +419,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                                   try {
                                     if (!expiryDraft || new Date(expiryDraft) <= new Date()) throw new Error('Choose a future expiry date and time.');
                                     await onExtendExpiry(link.id, expiryDraft);
-                                    await onQueryChange(page, filterType, filterStatus, search);
+                                    await onQueryChange(page, filterType, search, filterView);
                                     setEditingExpiryId(null);
                                     setExpiryError(null);
                                   } catch (error) {
@@ -406,29 +442,6 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                           )}
                         </td>
                       </tr>
-                      {expandedDetailsId === link.id && (
-                        <tr className="bg-red-50/40">
-                          <td colSpan={7} className="px-5 py-3">
-                            <div className="grid gap-2 text-[11px] sm:grid-cols-2 lg:grid-cols-4">
-                              <p><strong>Access count:</strong> {link.accessCount ?? 0}</p>
-                              <p><strong>Created by:</strong> {link.createdBy || 'Administrator'}</p>
-                              {link.notes && <p className="sm:col-span-2"><strong>Notes:</strong> {link.notes}</p>}
-                              {isCandidate && submissionVideos.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-2 lg:col-span-4">
-                                  <span className="font-semibold">Submission videos: {submissionVideos.length}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => setReviewingInviteId(link.id)}
-                                    className="font-bold text-red-700 hover:text-red-900"
-                                  >
-                                    Review submissions
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   );
                 })}
@@ -443,9 +456,9 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             Showing {(page - 1) * pageSize + (total ? 1 : 0)}–{Math.min(page * pageSize, total)} of {total}
           </span>
           <div className="flex gap-2">
-            <button type="button" disabled={page <= 1 || isLoading} onClick={() => onQueryChange(page - 1, filterType, filterStatus, search)} className="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Previous</button>
+            <button type="button" disabled={page <= 1 || isLoading} onClick={() => onQueryChange(page - 1, filterType, search, filterView)} className="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Previous</button>
             <span className="self-center text-xs text-[#8A8580]">Page {page} of {Math.max(1, Math.ceil(total / pageSize))}</span>
-            <button type="button" disabled={page >= Math.ceil(total / pageSize) || isLoading} onClick={() => onQueryChange(page + 1, filterType, filterStatus, search)} className="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Next</button>
+            <button type="button" disabled={page >= Math.ceil(total / pageSize) || isLoading} onClick={() => onQueryChange(page + 1, filterType, search, filterView)} className="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Next</button>
           </div>
         </div>
       )}

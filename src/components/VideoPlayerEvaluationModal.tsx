@@ -339,10 +339,10 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
         <div role="status" className="w-full max-w-md rounded-2xl border border-[#E8E5E1] bg-white p-8 text-center shadow-2xl">
           <img src={p2pLogo} alt="P2P Recruitment" className="mx-auto mb-4 h-14 w-auto object-contain" />
           <span className="material-symbols-outlined text-4xl text-emerald-700" aria-hidden="true">check_circle</span>
-          <h2 className="mt-2 text-lg font-extrabold text-[#101010]">Thank you for your review!</h2>
-          <p className="mt-2 text-sm text-[#5A5550]">
-            Your review for “{video.questionPrompt || 'this question'}” has been submitted.
-          </p>
+          <h2 className="mt-2 text-lg font-extrabold text-[#101010]">
+            Thank you for reviewing
+            <span className="mt-1 block">{video.candidateName}</span>
+          </h2>
           {nextQuestion && (
             <button
               type="button"
@@ -406,9 +406,6 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase border border-red-200">
                   {video.roleApplied}
                 </span>
-                {video.department && (
-                  <span className="text-xs text-red-900/60">• {video.department}</span>
-                )}
               </div>
               <p className="text-xs text-red-900/60 mt-0.5">Submitted {video.submittedTimeAgo}</p>
               <div className="mt-2 max-w-3xl rounded-lg border border-red-300 bg-red-50 px-3 py-2">
@@ -618,7 +615,7 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
               </div>
 
               {/* Candidate Info Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-white p-3 rounded-xl border border-[#E8E5E1]">
                   <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block mb-0.5">Applicant</span>
                   <p className="font-bold text-[#101010] truncate">{video.candidateName}</p>
@@ -628,13 +625,6 @@ export const VideoPlayerEvaluationModal: React.FC<VideoPlayerEvaluationModalProp
                 <div className="bg-white p-3 rounded-xl border border-[#E8E5E1]">
                   <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block mb-0.5">Applied Position</span>
                   <p className="font-bold text-[#101010] truncate">{video.roleApplied}</p>
-                  <p className="text-[11px] text-[#8A8580]">{video.department || 'Engineering'}</p>
-                </div>
-
-                <div className="bg-white p-3 rounded-xl border border-[#E8E5E1]">
-                  <span className="text-[10px] font-bold text-red-900/60 uppercase tracking-wider block mb-0.5">Experience & Batch</span>
-                  <p className="font-bold text-[#101010]">{video.experienceYears ? `${video.experienceYears}+ Yrs` : 'Experienced'}</p>
-                  <p className="text-[11px] text-[#8A8580] truncate">{video.batchName || 'General Queue'}</p>
                 </div>
               </div>
 

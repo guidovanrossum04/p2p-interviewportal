@@ -51,7 +51,7 @@ export default function App() {
   const emptyAdminUser: User = {
     id: 'admin-session',
     name: 'P2P Admin',
-    email: 'p2precruitment2025@gmail.com',
+    email: 'ivornorth@p2precruitment.com.au',
     role: 'admin',
     avatar: '',
     status: 'active',
@@ -135,8 +135,8 @@ export default function App() {
   const fetchInvitePage = useCallback(async (
     page: number,
     type: string,
-    status: string,
     search: string,
+    view: 'active' | 'archived' | 'blocked' = 'active',
   ) => {
     setIsLoadingInvites(true);
     try {
@@ -144,8 +144,8 @@ export default function App() {
         page: String(page),
         limit: String(invitePageSize),
         type,
-        status,
         search,
+        view,
       });
       const response = await fetch(`/api/invites?${params.toString()}`);
       const result = await response.json();
@@ -434,6 +434,7 @@ export default function App() {
     roleApplied?: string;
     department?: string;
     assignedVideoId?: string;
+    assignedVideoIds?: string[];
     expiresAt: string;
     notes?: string;
     answerMode?: 'upload' | 'record';
@@ -478,17 +479,47 @@ export default function App() {
     }
   };
 
-  const handleRevokeInvite = async (id: string) => {
+  const handleArchiveInvite = async (id: string, archived: boolean): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/invites/${id}/revoke`, { method: 'POST' });
+      const response = await fetch(`/api/invites/${encodeURIComponent(id)}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived }),
+      });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Could not revoke this link.');
+      if (!response.ok) throw new Error(result.error || 'Could not update archive status.');
+      showToast(archived ? 'Link archived.' : 'Link restored from archive.');
+      return true;
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Could not revoke this link.');
-      return;
+      showToast(error instanceof Error ? error.message : 'Could not update archive status.');
+      return false;
     }
-    setInviteLinks((prev) => prev.map((l) => (l.id === id ? { ...l, status: 'revoked' } : l)));
-    showToast('Link revoked successfully');
+  };
+
+  const handleBlockInvite = async (id: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/invites/${encodeURIComponent(id)}/revoke`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not block this link.');
+      showToast('Link access blocked.');
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not block this link.');
+      return false;
+    }
+  };
+
+  const handleDeleteInvite = async (id: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/invites/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not delete this link.');
+      showToast('Link deleted.');
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not delete this link.');
+      return false;
+    }
   };
 
   const handleExtendInviteExpiry = async (id: string, expiresAt: string) => {
@@ -685,6 +716,24 @@ export default function App() {
       showToast(`${user.name}'s account was deleted.`);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Could not delete this account.');
+    }
+  };
+
+  const handleSetUserStatus = async (user: User, status: 'active' | 'inactive'): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/users/${encodeURIComponent(user.id)}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Could not mark ${user.name} ${status}.`);
+      setUsers((previous) => previous.map((item) => item.id === user.id ? { ...item, status } : item));
+      showToast(`${user.name} is now ${status}.`);
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : `Could not mark ${user.name} ${status}.`);
+      return false;
     }
   };
 
@@ -1042,8 +1091,10 @@ export default function App() {
                 setCreateInviteDefaultType('candidate');
                 setShowCreateInviteModal(true);
               }}
-              onRevokeLink={handleRevokeInvite}
               onExtendExpiry={handleExtendInviteExpiry}
+              onArchiveLink={handleArchiveInvite}
+              onBlockLink={handleBlockInvite}
+              onDeleteLink={handleDeleteInvite}
             />
           ) : userRole === 'candidate' && currentTab === 'guidelines' ? (
             <CandidatePrepGuidelinesView />
@@ -1110,6 +1161,7 @@ export default function App() {
                 setShowAddUserModal(true);
               }}
               onDeleteUser={handleDeleteUser}
+              onSetUserStatus={handleSetUserStatus}
               onCleanupComplete={fetchAllData}
             />
           ) : userRole === 'evaluator' && currentTab === 'users' ? (
