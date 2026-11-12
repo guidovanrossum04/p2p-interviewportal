@@ -163,7 +163,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                 <tr className="border-b border-[#E8E5E1] bg-red-50/40 text-[11px] font-bold text-red-900/60 uppercase tracking-wider">
                   <th className="px-6 py-3.5">Candidate</th>
                   <th className="px-6 py-3.5">Role / Dept</th>
-                  <th className="px-6 py-3.5">Overall rating</th>
+                  <th className="px-6 py-3.5">Employer result</th>
                   <th className="px-6 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
@@ -178,9 +178,16 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                   submissions.map(({ id: submissionId, videos: submissionVideos }) => {
                     const video = submissionVideos[0];
                     const evaluatedVideos = submissionVideos.filter((item) => item.evaluation);
-                    const overallScore = evaluatedVideos.length
-                      ? Math.round(evaluatedVideos.reduce((sum, item) => sum + (item.evaluation?.overallScore || 0), 0) / evaluatedVideos.length)
+                    const ratedVideos = evaluatedVideos.filter((item) => Object.keys(item.evaluation?.scores || {}).length > 0);
+                    const overallScore = ratedVideos.length
+                      ? Math.round(ratedVideos.reduce((sum, item) => sum + (item.evaluation?.overallScore || 0), 0) / ratedVideos.length)
                       : null;
+                    const overallDecision = evaluatedVideos[0]?.evaluation?.decision;
+                    const decisionLabel = overallDecision === 'selected' || overallDecision === 'shortlist'
+                      ? 'Recruit Candidate'
+                      : overallDecision === 'rejected' || overallDecision === 'reject'
+                        ? 'Reject Candidate'
+                        : 'Review submitted';
                     const overallStars = overallScore === null ? 0 : Math.max(0, Math.min(5, Math.round(overallScore / 20)));
                     const isExpanded = expandedSubmissionId === submissionId;
                     return (
@@ -188,7 +195,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                     <tr className="hover:bg-rose-50/30 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                          <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                             {getInitials(video.candidateName)}
                           </div>
                           <div>
@@ -207,7 +214,11 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
 
                       <td className="px-6 py-4">
                         {overallScore === null ? (
-                          <span className="text-[11px] text-[#8A8580]">Not rated</span>
+                          evaluatedVideos.length ? (
+                            <span className={`text-[11px] font-semibold ${overallDecision === 'rejected' || overallDecision === 'reject' ? 'text-red-700' : 'text-emerald-700'}`}>
+                              {decisionLabel}
+                            </span>
+                          ) : <span className="text-[11px] text-[#8A8580]">Not reviewed</span>
                         ) : (
                           <div className="flex items-center gap-1.5" aria-label={`Employer overall rating ${overallStars} out of 5 stars`}>
                             <span className="flex items-center" aria-hidden="true">
@@ -250,7 +261,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                                   </span>
                                 </span>
                                 <span className="text-[#5A5550]">
-                                  Approval: <span className={`font-bold ${item.adminReviewStatus === 'accepted' ? 'text-emerald-700' : item.adminReviewStatus === 'reupload_requested' ? 'text-amber-700' : 'text-[#8A8580]'}`}>
+                                  Approval: <span className={`font-bold ${item.adminReviewStatus === 'accepted' ? 'text-emerald-700' : item.adminReviewStatus === 'reupload_requested' ? 'text-red-700' : 'text-[#8A8580]'}`}>
                                     {item.adminReviewStatus === 'accepted'
                                       ? 'Approved'
                                       : item.adminReviewStatus === 'reupload_requested'
@@ -265,9 +276,9 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onSelectCandidateVideo(item)}
-                              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50"
+                              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#D6D3D1] bg-white px-3 py-1.5 text-xs font-bold text-[#5A5550] hover:bg-[#F5F5F4]"
                             >
-                              <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                              <span className="material-symbols-outlined text-[16px]">play_arrow</span>
                               View &amp; review
                             </button>
                           </div>
@@ -288,9 +299,16 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
           {submissions.map(({ id: submissionId, videos: submissionVideos }) => {
             const video = submissionVideos[0];
             const evaluatedVideos = submissionVideos.filter((item) => item.evaluation);
-            const overallScore = evaluatedVideos.length
-              ? Math.round(evaluatedVideos.reduce((sum, item) => sum + (item.evaluation?.overallScore || 0), 0) / evaluatedVideos.length)
+            const ratedVideos = evaluatedVideos.filter((item) => Object.keys(item.evaluation?.scores || {}).length > 0);
+            const overallScore = ratedVideos.length
+              ? Math.round(ratedVideos.reduce((sum, item) => sum + (item.evaluation?.overallScore || 0), 0) / ratedVideos.length)
               : null;
+            const overallDecision = evaluatedVideos[0]?.evaluation?.decision;
+            const decisionLabel = overallDecision === 'selected' || overallDecision === 'shortlist'
+              ? 'Recruit Candidate'
+              : overallDecision === 'rejected' || overallDecision === 'reject'
+                ? 'Reject Candidate'
+                : 'Review submitted';
             const overallStars = overallScore === null ? 0 : Math.max(0, Math.min(5, Math.round(overallScore / 20)));
             return (
             <div
@@ -303,7 +321,7 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                   alt={video.candidateName}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30"></div>
+                <div className="absolute inset-0 bg-black/40"></div>
 
                 <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] font-mono">
                   {video.videoDuration || '05:00'}
@@ -318,7 +336,9 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                   <p className="text-xs text-[#8A8580]">{video.roleApplied}</p>
                   <p className="mt-1 text-[10px] text-[#8A8580]">{submissionVideos.length} questions</p>
                   {overallScore === null ? (
-                    <p className="mt-2 text-[10px] text-[#8A8580]">Overall rating: Not rated</p>
+                    <p className={`mt-2 text-[10px] font-semibold ${evaluatedVideos.length ? (overallDecision === 'rejected' || overallDecision === 'reject' ? 'text-red-700' : 'text-emerald-700') : 'text-[#8A8580]'}`}>
+                      {evaluatedVideos.length ? decisionLabel : 'Not reviewed'}
+                    </p>
                   ) : (
                     <div className="mt-2 flex items-center gap-1" aria-label={`Employer overall rating ${overallStars} out of 5 stars`}>
                       <span className="text-[10px] font-semibold text-[#5A5550]">Overall rating:</span>
@@ -340,15 +360,15 @@ export const AllVideosView: React.FC<AllVideosViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onSelectCandidateVideo(item)}
-                              className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-red-700 hover:text-red-900"
+                              className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-[#5A5550] hover:text-[#101010]"
                             >
-                              <span className="material-symbols-outlined text-[15px]">play_circle</span>
+                              <span className="material-symbols-outlined text-[15px]">play_arrow</span>
                               View &amp; review
                             </button>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 pl-6 text-[9px]">
                             <span className="text-[#5A5550]">Review: <strong className={item.status === 'completed' ? 'text-emerald-700' : item.status === 'in_review' ? 'text-amber-700' : 'text-[#8A8580]'}>{item.status === 'completed' ? 'Completed' : item.status === 'in_review' ? 'In review' : 'Pending'}</strong></span>
-                            <span className="text-[#5A5550]">Approval: <strong className={item.adminReviewStatus === 'accepted' ? 'text-emerald-700' : item.adminReviewStatus === 'reupload_requested' ? 'text-amber-700' : 'text-[#8A8580]'}>{item.adminReviewStatus === 'accepted' ? 'Approved' : item.adminReviewStatus === 'reupload_requested' ? 'Reupload requested' : item.adminConfirmed ? 'Reviewed' : 'Awaiting approval'}</strong></span>
+                            <span className="text-[#5A5550]">Approval: <strong className={item.adminReviewStatus === 'accepted' ? 'text-emerald-700' : item.adminReviewStatus === 'reupload_requested' ? 'text-red-700' : 'text-[#8A8580]'}>{item.adminReviewStatus === 'accepted' ? 'Approved' : item.adminReviewStatus === 'reupload_requested' ? 'Reupload requested' : item.adminConfirmed ? 'Reviewed' : 'Awaiting approval'}</strong></span>
                           </div>
                         </div>
                       </li>

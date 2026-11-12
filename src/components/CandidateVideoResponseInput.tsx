@@ -20,6 +20,7 @@ export const CandidateVideoResponseInput: React.FC<CandidateVideoResponseInputPr
   const [error, setError] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
@@ -47,6 +48,16 @@ export const CandidateVideoResponseInput: React.FC<CandidateVideoResponseInputPr
       preview.srcObject = null;
     };
   }, [stream]);
+
+  useEffect(() => {
+    if (answerMode !== 'upload' || !answer) {
+      setUploadPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(answer);
+    setUploadPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [answer, answerMode]);
 
   useEffect(() => () => {
     if (recorderRef.current?.state === 'recording') {
@@ -154,10 +165,15 @@ export const CandidateVideoResponseInput: React.FC<CandidateVideoResponseInputPr
             {answer ? 'Replace video' : 'Choose video to upload'}
           </button>
           {answer && (
-            <p className="flex items-center gap-2 text-[11px] text-emerald-700">
-              <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
-              Ready to upload: {answer.name}
-            </p>
+            <div className="space-y-2">
+              {uploadPreviewUrl && (
+                <video src={uploadPreviewUrl} controls playsInline className="w-full max-w-md rounded-lg bg-black aspect-video" />
+              )}
+              <p className="flex items-center gap-2 text-[11px] text-emerald-700">
+                <Video aria-hidden="true" className="h-4 w-4 shrink-0" />
+                Ready to upload: {answer.name}
+              </p>
+            </div>
           )}
         </>
       ) : (

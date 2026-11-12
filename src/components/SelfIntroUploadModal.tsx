@@ -62,9 +62,6 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
   const [answers, setAnswers] = useState<(File | null)[]>(() => questions.map(() => null));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [compressBeforeUpload, setCompressBeforeUpload] = useState(false);
-  const [compressionProgress, setCompressionProgress] = useState<number | null>(null);
-  const [compressionNotice, setCompressionNotice] = useState('');
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -80,23 +77,9 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
         setUploadError(`Provide a video response for each of the ${questions.length} requested question${questions.length === 1 ? '' : 's'} before submitting.`);
         return;
       }
-      let uploadAnswers = submittedAnswers;
-      if (compressBeforeUpload) {
-        const compressedAnswers: File[] = [];
-        let allCompressed = true;
-        for (const [index, answer] of submittedAnswers.entries()) {
-          setCompressionProgress(Math.round((index / submittedAnswers.length) * 100));
-          const result = await compressVideo(answer, (progress) => {
-            setCompressionProgress(Math.round(((index + progress / 100) / submittedAnswers.length) * 100));
-          });
-          compressedAnswers.push(result.file);
-          allCompressed = allCompressed && result.compressed;
-        }
-        uploadAnswers = compressedAnswers;
-        setCompressionProgress(null);
-        setCompressionNotice(allCompressed ? '' : 'At least one video was already smaller than its compressed version, so the original was kept.');
-      } else {
-        setCompressionNotice('');
+      const uploadAnswers: File[] = [];
+      for (const answer of submittedAnswers) {
+        uploadAnswers.push(await compressVideo(answer));
       }
       let newVideos: CandidateVideo[];
       let emailNotice = '';
@@ -148,6 +131,7 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
           keySkills: [],
           bio: '',
           questionPrompt: questions[index],
+          questionNumber: index + 1,
           videoUrl: URL.createObjectURL(file),
           videoDuration: '00:00',
           durationSeconds: 0,
@@ -160,7 +144,6 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
       setUploadError(error instanceof Error ? error.message : 'Video upload failed.');
     } finally {
       setIsSubmitting(false);
-      setCompressionProgress(null);
     }
   };
 
@@ -192,19 +175,6 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
-          <label className="flex items-start gap-2 rounded-lg border border-[#E8E5E1] bg-[#FAF8F6] p-3 text-xs">
-            <input
-              type="checkbox"
-              checked={compressBeforeUpload}
-              onChange={(event) => setCompressBeforeUpload(event.target.checked)}
-              disabled={isSubmitting}
-              className="mt-0.5 accent-red-600"
-            />
-            <span>
-              <span className="block font-semibold">Compress videos before upload</span>
-              <span className="mt-0.5 block text-[11px] text-[#5A5550]">Resizes to up to 720p. Processing happens on this device.</span>
-            </span>
-          </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block font-semibold text-[#101010]">
               Full Name *
@@ -242,7 +212,6 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
             ))}
           </div>
 
-          {compressionNotice && <p role="status" className="text-[11px] text-[#5A5550]">{compressionNotice}</p>}
           {uploadError && <p role="alert" className="text-xs font-semibold text-red-700">{uploadError}</p>}
           <div className="pt-2 flex justify-end gap-3 border-t border-[#E8E5E1]">
             <button type="button" onClick={onClose} className="px-4 py-2 border border-[#E8E5E1] hover:bg-red-50 rounded-lg font-semibold">Cancel</button>
@@ -250,7 +219,7 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                  {compressionProgress !== null ? `Compressing videos ${compressionProgress}%` : 'Uploading videos...'}
+                  Uploading videos...
                 </span>
               ) : 'Submit all video responses'}
             </button>

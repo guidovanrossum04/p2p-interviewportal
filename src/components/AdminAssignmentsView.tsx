@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CandidateEvaluation, CandidateVideo } from '../types';
 import { groupVideosBySubmission } from '../utils/submissions';
-import { adminReviewRubric } from '../data/adminReviewRubric';
+import { adminReviewRubric, standardEvaluationRubric } from '../data/adminReviewRubric';
 
 const RatingStars: React.FC<{ score: number }> = ({ score }) => (
   <span className="inline-flex items-center gap-0.5" role="img" aria-label={`${score} out of 5 stars`}>
@@ -41,7 +41,9 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const focusedSubmissionRef = useRef<HTMLElement | null>(null);
-  const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
+  const [expandedAdminReviewSubmissionId, setExpandedAdminReviewSubmissionId] = useState<string | null>(null);
+  const [expandedEmployerReviewSubmissionId, setExpandedEmployerReviewSubmissionId] = useState<string | null>(null);
+  const [selectedEmployerReviewKey, setSelectedEmployerReviewKey] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -76,7 +78,7 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
   useEffect(() => {
     if (focusSubmissionId) {
       setSearch(focusSubmissionId);
-      setExpandedSubmissionId(focusSubmissionId);
+      setExpandedAdminReviewSubmissionId(focusSubmissionId);
     }
   }, [focusSubmissionId]);
 
@@ -154,36 +156,29 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
           });
           const candidateReviewHistory = [...reviewHistoryById.values()]
             .sort((left, right) => new Date(right.evaluatedAt).getTime() - new Date(left.evaluatedAt).getTime());
-          const supportingDocuments = new Map<string, { document: NonNullable<CandidateVideo['documents']>[number]; video: CandidateVideo }>();
-          batchVideos.forEach((video) => {
-            (video.documents || []).forEach((document) => {
-              const documentKey = [
-                document.name.trim().toLocaleLowerCase(),
-                document.mimeType.trim().toLocaleLowerCase(),
-                document.size,
-              ].join(':');
-              if (!supportingDocuments.has(documentKey)) {
-                supportingDocuments.set(documentKey, { document, video });
-              }
-            });
-          });
           const employerEvaluation = batchVideos.find((video) => video.evaluation)?.evaluation;
-          const employerReviewed = batchVideos.every((video) => video.status === 'completed' && video.evaluation);
           const employerReviewGroups = new Map<string, CandidateEvaluation[]>();
           candidateReviewHistory
             .filter((evaluation) => evaluation.submissionId === submissionId)
             .forEach((evaluation) => {
-              const reviewKey = `${evaluation.evaluatorId}:${evaluation.evaluatedAt || 'unknown-date'}`;
-              employerReviewGroups.set(reviewKey, [...(employerReviewGroups.get(reviewKey) || []), evaluation]);
+              employerReviewGroups.set(
+                evaluation.evaluatorId,
+                [...(employerReviewGroups.get(evaluation.evaluatorId) || []), evaluation],
+              );
             });
           if (employerEvaluation && employerReviewGroups.size === 0) {
             employerReviewGroups.set(
-              `${employerEvaluation.evaluatorId}:${employerEvaluation.evaluatedAt || 'current-review'}`,
+              employerEvaluation.evaluatorId,
               [employerEvaluation],
             );
           }
-          const employerReviews = Array.from(employerReviewGroups.values());
-          const isExpanded = expandedSubmissionId === submissionId;
+          const employerReviews = Array.from(employerReviewGroups, ([reviewerId, reviews]) => ({ reviewerId, reviews }));
+          const selectedEmployerReview = employerReviews.find((item) => item.reviewerId === selectedEmployerReviewKey)
+            || employerReviews[0];
+          const employerReviewed = batchVideos.every((video) => video.status === 'completed')
+            && Boolean(employerEvaluation || employerReviews.length);
+          const isAdminReviewExpanded = expandedAdminReviewSubmissionId === submissionId;
+          const isEmployerReviewExpanded = expandedEmployerReviewSubmissionId === submissionId;
           return (
             <section
               key={submissionId}
@@ -233,19 +228,34 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  aria-expanded={isExpanded}
-                  onClick={() => setExpandedSubmissionId(isExpanded ? null : submissionId)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white px-3.5 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-50"
-                >
-                  <span className="material-symbols-outlined text-base">{isExpanded ? 'expand_less' : 'expand_more'}</span>
-                  {isExpanded ? 'Hide submission details' : employerReviewed ? 'View result & scoring' : 'View submission details'}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    aria-expanded={isAdminReviewExpanded}
+                    onClick={() => setExpandedAdminReviewSubmissionId(isAdminReviewExpanded ? null : submissionId)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#D6D3D1] bg-white px-3.5 py-2 text-xs font-bold text-[#5A5550] transition-colors hover:bg-[#F5F5F4]"
+                  >
+                    <span className="material-symbols-outlined text-base">{isAdminReviewExpanded ? 'expand_less' : 'expand_more'}</span>
+                    Admin Review
+                  </button>
+                  {assignedCount > 0 && (
+                    <button
+                      type="button"
+                      aria-expanded={isEmployerReviewExpanded}
+                      onClick={() => setExpandedEmployerReviewSubmissionId(isEmployerReviewExpanded ? null : submissionId)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#D6D3D1] bg-white px-3.5 py-2 text-xs font-bold text-[#5A5550] transition-colors hover:bg-[#F5F5F4]"
+                    >
+                      <span className="material-symbols-outlined text-base">{isEmployerReviewExpanded ? 'expand_less' : 'expand_more'}</span>
+                      Employer Review
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {isExpanded && (
-                <div className="border-t border-[#E8E5E1] bg-[#F5F2EE] p-5">
+              {(isAdminReviewExpanded || isEmployerReviewExpanded) && (
+                <div className="border-t border-[#E8E5E1] bg-[#FFFFFF] p-5">
+                  {isAdminReviewExpanded && (
+                    <div className="space-y-5">
                   <section className="mb-5 overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
                     <div className="border-b border-[#E8E5E1] bg-[#101010] px-4 py-3 text-white">
                       <h4 className="text-xs font-bold">Admin review scoring</h4>
@@ -266,7 +276,7 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                                 <p className="mt-0.5 text-[11px] text-[#5A5550]">{video.questionPrompt || 'Question not specified'}</p>
                               </div>
                               {adminOverallRating !== null && (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F5F2EE] px-2.5 py-1 text-[10px] font-bold text-[#101010]">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-2.5 py-1 text-[10px] font-bold text-[#101010]">
                                   Admin overall
                                   <RatingStars score={Math.round(adminOverallRating)} />
                                   {adminOverallRating.toFixed(1)}/5
@@ -299,7 +309,7 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                   <div className="mb-5 overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
                     <div className="border-b border-[#E8E5E1] bg-red-50/50 px-4 py-3">
                       <h4 className="text-xs font-bold text-[#101010]">Submitted videos in this submission</h4>
-                      <p className="mt-0.5 text-[10px] text-[#8A8580]">Each question and its admin feedback are listed below. Employer scoring above applies to all videos together.</p>
+                      <p className="mt-0.5 text-[10px] text-[#8A8580]">Each question and its admin feedback are listed below.</p>
                     </div>
                     <div className="divide-y divide-red-50">
                       {batchVideos.map((video, index) => (
@@ -320,7 +330,7 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                               video.adminReviewStatus === 'accepted'
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : video.adminReviewStatus === 'reupload_requested'
-                                ? 'bg-amber-100 text-amber-800'
+                                ? 'bg-red-100 text-red-800'
                                 : 'bg-gray-100 text-gray-700'
                             }`}>
                               {video.adminReviewStatus === 'accepted'
@@ -344,148 +354,89 @@ export const AdminAssignmentsView: React.FC<AdminAssignmentsViewProps> = ({
                       ))}
                     </div>
                   </div>
-                  {employerReviewed && employerEvaluation ? (
+                    </div>
+                  )}
+                  {isEmployerReviewExpanded && (employerReviewed && employerEvaluation ? (
                     <div className="space-y-5">
-                      {employerReviews.map((reviewItems) => {
-                        const review = reviewItems[0];
+                      <label className="block max-w-md text-xs font-semibold text-[#101010]">
+                        Choose employer result
+                        <select
+                          value={selectedEmployerReview?.reviewerId || ''}
+                          onChange={(event) => setSelectedEmployerReviewKey(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-[#E8E5E1] bg-white px-3 py-2 text-xs font-normal text-[#101010] focus:border-red-500 focus:outline-none"
+                        >
+                          {employerReviews.map(({ reviewerId, reviews }) => (
+                            <option key={reviewerId} value={reviewerId}>
+                              {reviews[0]?.evaluatorName || 'Manager / Employer'}
+                              {reviews[0]?.evaluatedAt ? ` · ${new Date(reviews[0].evaluatedAt).toLocaleString()}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {selectedEmployerReview && (() => {
+                        const review = selectedEmployerReview.reviews[0];
+                        if (!review) return null;
                         const reviewRejected = review.decision === 'rejected' || review.decision === 'reject';
                         const reviewDecision = reviewRejected
-                          ? 'Submission rejected'
+                          ? 'Reject Candidate'
                           : review.decision === 'selected' || review.decision === 'shortlist'
-                            ? 'Selected'
+                            ? 'Recruit Candidate'
                             : review.decision === 'hold' ? 'On hold' : 'Reviewed';
-                        const reviewRubric = review.rubricWeights
-                          || Object.keys(review.scores || {}).map((criterionId) => ({
-                            id: criterionId,
-                            name: criterionId.replace(/([A-Z])/g, ' $1').replace(/^./, (character) => character.toUpperCase()),
-                            weight: 0,
-                          }));
+                        const reviewRubric = review.rubricWeights?.length
+                          ? review.rubricWeights
+                          : standardEvaluationRubric;
+                        const overallRating = reviewRubric.reduce(
+                          (total, criterion) => total + (Number(review.scores[criterion.id]) || 0),
+                          0,
+                        ) / reviewRubric.length;
                         return (
-                      <section key={`${review.evaluatorId}:${review.evaluatedAt}`} className="space-y-4 rounded-2xl border border-[#E8E5E1] bg-[#FAF9F7] p-4">
-                      <div>
-                        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                          <div>
-                            <h4 className="text-sm font-bold text-[#101010]">Manager / Employer scoring breakdown</h4>
-                            <p className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-[#D6D3D1] bg-[#F5F2EE] px-2.5 py-1 text-[11px] font-bold text-[#101010]">
-                              <span>Reviewed by {review.evaluatorName || 'Manager / Employer'}</span>
-                              {review.evaluatedAt && (
-                                <span className="font-medium text-[#5A5550]">· {new Date(review.evaluatedAt).toLocaleString()}</span>
-                              )}
-                            </p>
-                          </div>
-                          <span className="text-[10px] text-[#8A8580]">Ratings are shown out of 5</span>
-                        </div>
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#E8E5E1] bg-white p-4">
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-[#8A8580]">Employer overall rating</p>
-                            <p className="mt-1 text-2xl font-extrabold text-[#101010]">{review.overallScore}<span className="ml-1 text-sm font-semibold text-[#8A8580]">/100</span></p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <RatingStars score={Math.round(Math.max(0, Math.min(100, Number(review.overallScore) || 0)) / 20)} />
-                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                              reviewRejected ? 'bg-rose-100 text-rose-800' : reviewDecision === 'On hold'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}>{reviewDecision}</span>
-                          </div>
-                        </div>
-                        {review.notes && (
-                          <p className="mb-3 whitespace-pre-wrap rounded-xl border border-[#E8E5E1] bg-white p-3 text-xs leading-relaxed text-[#5A5550]">
-                            {review.notes}
-                          </p>
-                        )}
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {reviewRubric.map((criterion) => {
-                            const score = Math.max(0, Math.min(5, Number(review.scores[criterion.id]) || 0));
-                            return (
-                              <div key={criterion.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#E8E5E1] bg-white p-3.5">
-                                <span className="text-xs font-bold text-[#101010]">{criterion.name}</span>
-                                <div className="flex shrink-0 items-center gap-2">
-                                  <RatingStars score={score} />
-                                  <span className="text-xs font-extrabold text-[#5A5550]">{score}/5</span>
-                                </div>
+                          <section key={selectedEmployerReview.reviewerId} className="space-y-3 rounded-2xl border border-[#E8E5E1] bg-[#FAF9F7] p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <h4 className="text-sm font-bold text-[#101010]">Overall employer decision</h4>
+                                <p className="mt-1 text-[11px] text-[#5A5550]">
+                                  Reviewed by {review.evaluatorName || 'Manager / Employer'}
+                                  {review.evaluatedAt ? ` · ${new Date(review.evaluatedAt).toLocaleString()}` : ''}
+                                </p>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {(review.keyStrengths?.length || review.areasToImprove?.length) && (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {review.keyStrengths && review.keyStrengths.length > 0 && (
-                            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-                              <h5 className="text-xs font-bold text-emerald-900">Key strengths</h5>
-                              <ul className="mt-2 space-y-1.5 text-xs text-emerald-900/80">
-                                {review.keyStrengths.map((strength, index) => <li key={`${index}-${strength}`}>• {strength}</li>)}
-                              </ul>
+                              <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                reviewRejected ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
+                              }`}>{reviewDecision}</span>
                             </div>
-                          )}
-                          {review.areasToImprove && review.areasToImprove.length > 0 && (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-                              <h5 className="text-xs font-bold text-amber-900">Areas for improvement</h5>
-                              <ul className="mt-2 space-y-1.5 text-xs text-amber-900/80">
-                                {review.areasToImprove.map((area, index) => <li key={`${index}-${area}`}>• {area}</li>)}
-                              </ul>
+                            <div className="rounded-xl border border-[#E8E5E1] bg-white p-3">
+                              <div className="mb-3 flex items-center justify-between">
+                                <h5 className="text-xs font-bold text-[#101010]">Standard Evaluation Rubric</h5>
+                                <span className="text-xs font-extrabold text-[#5A5550]">{overallRating.toFixed(1)} / 5</span>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {reviewRubric.map((criterion) => {
+                                  const score = Math.max(0, Math.min(5, Number(review.scores[criterion.id]) || 0));
+                                  return (
+                                    <div key={criterion.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#FAF9F7] px-2.5 py-2">
+                                      <span className="text-[11px] font-semibold text-[#101010]">{criterion.name}</span>
+                                      <span className="flex shrink-0 items-center gap-1">
+                                        <RatingStars score={score} />
+                                        <span className="text-[10px] font-bold text-[#5A5550]">{score}/5</span>
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      )}
-                      </section>
+                            {review.notes && (
+                              <p className="whitespace-pre-wrap rounded-xl border border-[#E8E5E1] bg-white p-3 text-xs leading-relaxed text-[#5A5550]">
+                                {review.notes}
+                              </p>
+                            )}
+                          </section>
                         );
-                      })}
+                      })()}
                     </div>
                   ) : (
-                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
                       {assignedCount > 0 ? 'The Manager / Employer is still reviewing this submission.' : 'This submission is awaiting assignment.'}
                     </div>
-                  )}
-
-                  {employerReviewed && (
-                    <section className="mb-5 overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
-                      <div className="border-b border-[#E8E5E1] bg-red-50/50 px-4 py-3">
-                        <h4 className="text-xs font-bold text-[#101010]">Videos reviewed by the Manager / Employer</h4>
-                      </div>
-                      <div className="divide-y divide-[#F1EEEA] px-4">
-                        {batchVideos.map((video, index) => (
-                          <div key={video.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="min-w-0">
-                              <p className="text-[10px] font-bold uppercase tracking-wide text-[#8A8580]">Video {index + 1}</p>
-                              <p className="mt-0.5 text-xs leading-relaxed text-[#101010]">{video.questionPrompt || 'Question not specified'}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => onSelectCandidateVideo(video)}
-                              className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-red-200 px-3 py-1.5 text-[10px] font-bold text-red-700 hover:bg-red-50 sm:self-center"
-                            >
-                              <span className="material-symbols-outlined text-sm">play_circle</span>
-                              Watch video
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {supportingDocuments.size > 0 && (
-                    <section className="mb-5 overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
-                      <div className="border-b border-[#E8E5E1] bg-red-50/50 px-4 py-3">
-                        <h4 className="text-xs font-bold text-[#101010]">Admin-provided supporting documents</h4>
-                      </div>
-                      <div className="divide-y divide-[#F1EEEA] px-4">
-                        {[...supportingDocuments.values()].map(({ document, video }) => (
-                          <div key={document.id} className="flex items-center justify-between gap-3 py-3">
-                            <span className="truncate text-xs font-medium text-[#101010]">{document.name}</span>
-                            <span className="flex shrink-0 gap-3">
-                              <a href={document.url} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-red-700 hover:underline">View</a>
-                              <a href={document.downloadUrl || document.url} download={document.name} className="text-[11px] font-semibold text-red-700 hover:underline">Download</a>
-                            </span>
-                            <span className="sr-only">Attached to {video.candidateName}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
+                  ))}
                 </div>
               )}
             </section>

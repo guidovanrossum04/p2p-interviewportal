@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from 'node:
 import { Pool, PoolClient } from 'pg';
 import { CandidateVideo, InviteLink, RubricWeight, SystemSettings, User, UserRole } from '../../types';
 import { initialSettings } from '../../data/mockData';
+import { standardEvaluationRubric } from '../../data/adminReviewRubric';
 
 export interface CreateInviteInput {
   type: 'candidate' | 'evaluator';
@@ -21,7 +22,6 @@ export interface CreateInviteInput {
   videoCount?: number;
   questionPrompt?: string;
   questionPrompts?: string[];
-  adminSupportingDocuments?: UploadInput['documents'];
 }
 
 export interface UploadInput {
@@ -29,7 +29,7 @@ export interface UploadInput {
   candidateEmail: string;
   roleApplied: string;
   department: string;
-  videos: { filePath: string; originalFilename: string; mimeType: string; questionPrompt?: string }[];
+  videos: { filePath: string; originalFilename: string; mimeType: string; questionPrompt?: string; questionNumber?: number }[];
   documents: { id: string; filePath: string; originalFilename: string; mimeType: string; size: number }[];
   submissionType?: string;
   bio: string;
@@ -130,6 +130,9 @@ const videoFromRow = (row: VideoRow): CandidateVideo => {
     videoDuration: row.duration_seconds ? `${Math.floor(row.duration_seconds / 60)}:${String(row.duration_seconds % 60).padStart(2, '0')}` : '00:00',
     durationSeconds: Number(row.duration_seconds || 0),
     questionPrompt: details.questionPrompt || '',
+    questionNumber: Number.isInteger(Number(details.questionNumber)) && Number(details.questionNumber) > 0
+      ? Number(details.questionNumber)
+      : undefined,
     bio: details.bio || '',
     keySkills: details.keySkills || [],
     submissionType: details.submissionType,
@@ -143,6 +146,9 @@ const videoFromRow = (row: VideoRow): CandidateVideo => {
     adminFeedback: row.admin_feedback || '',
     adminReviewScores: details.adminReviewScores || {},
     adminOverallRating: Number.isFinite(Number(details.adminOverallRating)) ? Number(details.adminOverallRating) : undefined,
+    adminReviewSubmittedAt: details.adminReviewSubmittedAt
+      ? new Date(details.adminReviewSubmittedAt).toISOString()
+      : undefined,
     documents: Array.isArray(details.documents) ? details.documents.map((document: Record<string, any>) => {
       const url = `/api/videos/${encodeURIComponent(row.id)}/documents/${encodeURIComponent(document.id)}`;
       return {
@@ -213,8 +219,8 @@ const inviteFromRow = (row: ShareLinkRecord, token?: string): InviteLink => {
       questionPrompt: questionPrompts[0],
       questionPrompts: questionPrompts.length ? questionPrompts : undefined,
     } : {}),
-    ...(row.purpose === 'review' && Array.isArray(row.rubric_weights) && row.rubric_weights.length
-      ? { rubricWeights: row.rubric_weights }
+    ...(row.purpose === 'review'
+      ? { rubricWeights: standardEvaluationRubric }
       : {}),
     status: row.status === 'active' && new Date(row.expires_at) < new Date() ? 'expired' : row.status,
     createdAt: new Date(row.created_at).toISOString(),
@@ -744,6 +750,37 @@ export class PortalRepository {
     return result.rows.map(videoFromRow);
   }
 
+  async markSubmissionReviewSubmitted(batchId: string): Promise<CandidateVideo[]> {
+    const result = await this.pool.query(
+      `UPDATE videos
+       SET details = details || jsonb_build_object('adminReviewSubmittedAt', NOW())
+       WHERE COALESCE(details->>'submissionId', details->>'submissionBatchId', id) = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM videos pending_video
+           WHERE COALESCE(pending_video.details->>'submissionId', pending_video.details->>'submissionBatchId', pending_video.id) = $1
+             AND pending_video.admin_review_status = 'pending'
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM videos submitted_video
+           WHERE COALESCE(submitted_video.details->>'submissionId', submitted_video.details->>'submissionBatchId', submitted_video.id) = $1
+             AND submitted_video.details ? 'adminReviewSubmittedAt'
+         )
+       RETURNING id`,
+      [batchId],
+    );
+    if (!result.rowCount) return [];
+    return this.listSubmissionVideos(batchId);
+  }
+
+  async clearSubmissionReviewSubmitted(batchId: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE videos
+       SET details = details - 'adminReviewSubmittedAt'
+       WHERE COALESCE(details->>'submissionId', details->>'submissionBatchId', id) = $1`,
+      [batchId],
+    );
+  }
+
   async getVideo(id: string): Promise<CandidateVideo | null> {
     const result = await this.pool.query(`${videoSelect} WHERE v.id = $1`, [id]);
     return result.rowCount ? videoFromRow(result.rows[0]) : null;
@@ -863,9 +900,7 @@ export class PortalRepository {
     await this.ensureShareLinkConfigColumns();
     await this.ensureShareLinkRubricColumn();
     await this.ensureMultipleEmployerAssignments();
-    const rubricWeights = input.type === 'evaluator'
-      ? (await this.getSystemSettings()).rubricWeights
-      : [];
+    const rubricWeights = input.type === 'evaluator' ? standardEvaluationRubric : [];
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -909,22 +944,6 @@ export class PortalRepository {
           throw new Error('Approve every video in this candidate upload before assigning it to a Manager / Employer.');
         }
         assignedVideoIds = submissionVideos.rows.map((item) => item.id);
-        if (input.adminSupportingDocuments?.length) {
-          const documents = input.adminSupportingDocuments.map((document) => ({
-            ...document,
-            adminReviewStatus: 'accepted',
-            adminFeedback: '',
-          }));
-          await client.query(
-            `UPDATE videos SET details = jsonb_set(
-               details,
-               '{documents}',
-               COALESCE(details->'documents', '[]'::jsonb) || $2::jsonb,
-               true
-             ) WHERE id = ANY($1::text[])`,
-            [assignedVideoIds, JSON.stringify(documents)],
-          );
-        }
         const existingEvaluator = input.recipientEmail
           ? await client.query("SELECT id, status FROM users WHERE LOWER(email) = LOWER($1) AND role = 'evaluator'", [input.recipientEmail])
           : { rowCount: 0, rows: [] };
@@ -1088,6 +1107,7 @@ export class PortalRepository {
               bio: input.bio,
               keySkills: input.keySkills,
               questionPrompt: video.questionPrompt,
+              questionNumber: video.questionNumber,
               submissionBatchId: link.submission_id,
               submissionId: link.submission_id,
               documents: input.documents.map((document) => ({ ...document, adminReviewStatus: 'pending', adminFeedback: '' })),
@@ -1145,6 +1165,12 @@ export class PortalRepository {
         : details.documents || [];
       await client.query(
         `UPDATE videos
+         SET details = details - 'adminReviewSubmittedAt'
+         WHERE COALESCE(details->>'submissionId', details->>'submissionBatchId', id) = $1`,
+        [link.submission_id],
+      );
+      await client.query(
+        `UPDATE videos
          SET file_path = $2, original_filename = $3, mime_type = $4, status = 'pending',
              admin_confirmed = FALSE, admin_review_status = 'pending', admin_feedback = '',
              admin_reviewed_at = NULL,
@@ -1157,6 +1183,7 @@ export class PortalRepository {
           evaluationHistory: Array.isArray(details.evaluationHistory) ? details.evaluationHistory : [],
           adminReviewScores: undefined,
           adminOverallRating: undefined,
+          adminReviewSubmittedAt: undefined,
           documents: nextDocuments,
         })],
       );
@@ -1174,7 +1201,6 @@ export class PortalRepository {
     await this.ensureShareLinkRubricColumn();
     await this.ensureEvaluationDecisionConstraint();
     await this.ensureShareLinkLifecycleColumns();
-    const currentRubricWeights = (await this.getSystemSettings()).rubricWeights;
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -1196,9 +1222,7 @@ export class PortalRepository {
       if (!link || link.purpose !== 'review' || link.status !== 'active' || new Date(link.expires_at) <= new Date()) {
         throw new Error('This review link is invalid, expired, or already submitted.');
       }
-      const rubricWeights = Array.isArray(link.rubric_weights) && link.rubric_weights.length
-        ? link.rubric_weights
-        : currentRubricWeights;
+      const rubricWeights = standardEvaluationRubric;
       const scoreIds = Object.keys(input.scores || {});
       if (
         scoreIds.length !== rubricWeights.length
@@ -1249,6 +1273,94 @@ export class PortalRepository {
       }
       await client.query('COMMIT');
       return (await this.getVideo(input.videoId))!;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async submitOverallEvaluation(
+    tokenHash: string,
+    decision: 'selected' | 'rejected',
+    scores: Record<string, number>,
+    notes: string,
+  ): Promise<CandidateVideo[]> {
+    await this.ensureShareLinkRubricColumn();
+    await this.ensureEvaluationDecisionConstraint();
+    await this.ensureShareLinkLifecycleColumns();
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const linkResult = await client.query(
+        `SELECT * FROM share_links sl
+         WHERE sl.token_hash = $1 AND sl.deleted_at IS NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM users blocked_user
+             WHERE blocked_user.status = 'inactive'
+               AND blocked_user.id = sl.evaluator_id
+           )
+         FOR UPDATE OF sl`,
+        [tokenHash],
+      );
+      const link = linkResult.rows[0] as ShareLinkRecord | undefined;
+      if (!link || link.purpose !== 'review' || link.status !== 'active' || new Date(link.expires_at) <= new Date()) {
+        throw new Error('This review link is invalid, expired, or already submitted.');
+      }
+
+      const assignmentResult = await client.query(
+        `SELECT a.id, a.video_id
+         FROM assignments a
+         WHERE a.share_link_id = $1 AND a.evaluator_id = $2
+         ORDER BY a.video_id
+         FOR UPDATE OF a`,
+        [link.id, link.evaluator_id],
+      );
+      const assignments = assignmentResult.rows as { id: string; video_id: string }[];
+      if (!assignments.length) throw new Error('No active assignments exist for this review link.');
+      const assignmentIds = assignments.map((assignment) => assignment.id);
+      const submittedVideoIds = assignments.map((assignment) => assignment.video_id);
+      if (standardEvaluationRubric.some((criterion) =>
+        !Number.isInteger(scores[criterion.id]) || scores[criterion.id] < 1 || scores[criterion.id] > 5)
+        || Object.keys(scores).length !== standardEvaluationRubric.length) {
+        throw new Error('Rate every Standard Evaluation Rubric criterion before submitting.');
+      }
+      const overallScore = Math.round(
+        standardEvaluationRubric.reduce((total, criterion) => total + scores[criterion.id] * criterion.weight, 0) / 5,
+      );
+      await client.query('DELETE FROM evaluations WHERE assignment_id = ANY($1::text[])', [assignmentIds]);
+      await client.query(
+        `INSERT INTO evaluations (id, assignment_id, scores, overall_score, decision, notes, extra)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [randomUUID(), assignments[0].id, JSON.stringify(scores), overallScore, decision, notes,
+          JSON.stringify({ evaluationScope: 'submission', rubricWeights: standardEvaluationRubric })],
+      );
+      await client.query(
+        "UPDATE assignments SET status = 'completed', completed_at = NOW() WHERE id = ANY($1::text[])",
+        [assignmentIds],
+      );
+      await client.query(
+        "UPDATE videos SET status = 'completed' WHERE id = ANY($1::text[])",
+        [submittedVideoIds],
+      );
+      await client.query("UPDATE share_links SET status = 'used' WHERE id = $1", [link.id]);
+      const videosResult = await client.query(
+        `${videoSelect} WHERE v.id = ANY($1::text[])`,
+        [submittedVideoIds],
+      );
+      const videosById = new Map(videosResult.rows.map((row) => {
+        const candidateVideo = videoFromRow(row);
+        return [candidateVideo.id, candidateVideo] as const;
+      }));
+      const submittedVideos: CandidateVideo[] = [];
+      for (const id of submittedVideoIds) {
+        const candidateVideo = videosById.get(id);
+        if (!candidateVideo) throw new Error('The review was submitted, but one or more videos could not be loaded.');
+        submittedVideos.push(candidateVideo);
+      }
+      await client.query('COMMIT');
+      return submittedVideos;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

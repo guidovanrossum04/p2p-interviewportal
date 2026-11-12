@@ -4,21 +4,21 @@ import { CandidateAnswerMode, CandidateVideo, InviteLink, User } from '../types'
 import { SelfIntroUploadModal } from './SelfIntroUploadModal';
 import { CandidateVideoResponseInput } from './CandidateVideoResponseInput';
 import { compressVideo } from '../utils/compressVideo';
+import { groupVideosBySubmission } from '../utils/submissions';
 import p2pLogo from '../../assets/p2plogo.webp';
 
 interface RequestedRetakeProps {
   video: CandidateVideo;
+  questionNumber: number;
   linkToken?: string;
   answerMode: CandidateAnswerMode;
   onUploaded: (video: CandidateVideo, emailNotice?: string) => void;
 }
 
-const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, linkToken, answerMode, onUploaded }) => {
+const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, questionNumber, linkToken, answerMode, onUploaded }) => {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [compressBeforeUpload, setCompressBeforeUpload] = useState(false);
-  const [compressionProgress, setCompressionProgress] = useState<number | null>(null);
 
   const submitRetake = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -29,12 +29,7 @@ const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, linkToken, ans
     setIsSubmitting(true);
     setError(null);
     try {
-      let uploadFile = file;
-      if (compressBeforeUpload) {
-        setCompressionProgress(0);
-        const result = await compressVideo(file, setCompressionProgress);
-        uploadFile = result.file;
-      }
+      const uploadFile = await compressVideo(file);
       const formData = new FormData();
       formData.append('candidateName', video.candidateName);
       formData.append('candidateEmail', video.candidateEmail);
@@ -57,40 +52,25 @@ const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, linkToken, ans
       setError(submitError instanceof Error ? submitError.message : 'Could not upload the requested replacement video.');
     } finally {
       setIsSubmitting(false);
-      setCompressionProgress(null);
     }
   };
 
   return (
     <form onSubmit={submitRetake} className="rounded-xl border border-red-300 bg-red-50/50 p-4">
       <p className="text-[10px] font-extrabold uppercase tracking-wide text-red-700">Admin requested a retake</p>
-      <h3 className="mt-1 text-xs font-bold leading-5 text-[#101010]">{video.questionPrompt || 'Requested video response'}</h3>
+      <h3 className="mt-1 text-xs font-bold leading-5 text-[#101010]">Question {questionNumber}: {video.questionPrompt || 'Requested video response'}</h3>
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
           <CandidateVideoResponseInput
             answerMode={answerMode}
-            questionNumber={1}
+            questionNumber={questionNumber}
             answer={file}
             onChange={setFile}
           />
         </div>
-        {answerMode === 'upload' && (
-          <label className="flex items-center gap-2 text-[11px] font-medium text-[#5A5550]">
-            <input
-              type="checkbox"
-              checked={compressBeforeUpload}
-              onChange={(event) => setCompressBeforeUpload(event.target.checked)}
-              disabled={isSubmitting}
-              className="accent-red-600"
-            />
-            Compress before upload
-          </label>
-        )}
         <button type="submit" disabled={!file || isSubmitting || !linkToken} className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
           {isSubmitting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
-          {isSubmitting
-            ? compressionProgress !== null ? `Compressing ${compressionProgress}%` : 'Uploading...'
-            : answerMode === 'record' ? 'Submit recorded video' : 'Upload replacement video'}
+          {isSubmitting ? 'Uploading...' : answerMode === 'record' ? 'Submit recorded video' : 'Upload replacement video'}
         </button>
       </div>
       {error && <p role="alert" className="mt-2 text-xs font-semibold text-red-700">{error}</p>}
@@ -118,10 +98,14 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [submissionReceived, setSubmissionReceived] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const requestedRetakes = videos.filter((video) =>
+  const currentUploadGroups = groupVideosBySubmission(videos.filter((video) =>
     video.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()
-    && video.adminReviewStatus === 'reupload_requested'
-  );
+  ));
+  const currentUploads = currentUploadGroups.flatMap((group) => group.videos);
+  const questionNumberByVideoId = new Map(currentUploadGroups.flatMap((group) =>
+    group.videos.map((video, index) => [video.id, video.questionNumber || index + 1] as const),
+  ));
+  const requestedRetakes = currentUploads.filter((video) => video.adminReviewStatus === 'reupload_requested');
   const activeUploadLink = uploadLinks.find((link) => link.token === linkToken) || uploadLinks[0];
   const invitationNote = activeUploadLink?.notes?.trim() || '';
   const invitationLines = invitationNote.split(/\r?\n/);
@@ -134,9 +118,6 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
   const invitationSignoff = signoffIndex >= 0
     ? invitationContentLines.slice(signoffIndex).filter((line) => line.trim())
     : [];
-  const currentUploads = videos.filter((video) =>
-    video.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()
-  );
   const uploadStatusLabel = (video: CandidateVideo) => {
     if (video.adminReviewStatus === 'reupload_requested') return 'Retake requested';
     if (video.adminReviewStatus === 'accepted') return 'Approved';
@@ -160,7 +141,7 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
        
         {invitationNote && (
           <section aria-label="Invitation message" className="mt-5 overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
-            <div className="flex items-center gap-3 border-b border-[#E8E5E1] bg-[#F5F2EE] px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-[#E8E5E1] bg-[#FFFFFF] px-4 py-3">
               <img src={p2pLogo} alt="P2P Recruitment" className="h-10 w-auto object-contain" />
               <div className="text-[10px] text-[#5A5550]">
                 <p><strong>From:</strong> P2P Recruitment</p>
@@ -201,7 +182,7 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
               <li key={video.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-[#101010]">
-                    Video {index + 1}{video.questionPrompt ? ` · ${video.questionPrompt}` : ''}
+                    Question {questionNumberByVideoId.get(video.id) || index + 1}{video.questionPrompt ? ` · ${video.questionPrompt}` : ''}
                   </p>
                   {video.adminFeedback && video.adminReviewStatus === 'reupload_requested' && (
                     <p className="mt-1 whitespace-pre-wrap text-[11px] text-[#101010]">
@@ -213,8 +194,8 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
                   video.adminReviewStatus === 'accepted'
                     ? 'bg-emerald-50 text-emerald-800'
                     : video.adminReviewStatus === 'reupload_requested'
-                    ? 'bg-amber-50 text-amber-900'
-                    : 'bg-[#F5F2EE] text-[#101010]'
+                    ? 'bg-red-50 text-red-800'
+                    : 'bg-[#FFFFFF] text-[#101010]'
                 }`}>
                   {uploadStatusLabel(video)}
                 </span>
@@ -231,6 +212,7 @@ export const CandidatePortalView: React.FC<CandidatePortalViewProps> = ({
             <RequestedRetake
               key={video.id}
               video={video}
+              questionNumber={questionNumberByVideoId.get(video.id) || 1}
               linkToken={linkToken}
               answerMode={activeUploadLink?.answerMode || 'upload'}
               onUploaded={(replacement) => {

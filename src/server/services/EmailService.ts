@@ -40,14 +40,14 @@ export class EmailService {
 
   private emailLayout(content: string): string {
     return `<!doctype html>
-      <html><body style="margin:0;padding:24px;background:#F5F2EE;font-family:Archivo,Arial,Helvetica,sans-serif;color:#101010">
+      <html><body style="margin:0;padding:24px;background:#FFFFFF;font-family:Archivo,Arial,Helvetica,sans-serif;color:#101010">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#fff;border:1px solid #E8E5E1;border-radius:16px;overflow:hidden">
-          <tr><td style="padding:22px 28px;background:#D81F27;color:#fff">
+          <tr><td style="padding:22px 28px;background:#FF5A22;color:#fff">
             <div style="font-size:20px;font-weight:700">P2P Recruitment</div>
-            <div style="font-size:12px;color:#FFE4E6;margin-top:4px">Candidate interview and evaluation portal</div>
+            <div style="font-size:12px;color:#FFE4D6;margin-top:4px">Candidate interview and evaluation portal</div>
           </td></tr>
           <tr><td style="padding:28px;line-height:1.6;font-size:14px">${content}</td></tr>
-          <tr><td style="padding:16px 28px;background:#FFF1F2;border-top:1px solid #E8E5E1;color:#5A5550;font-size:11px">
+          <tr><td style="padding:16px 28px;background:#FFF3ED;border-top:1px solid #E8E5E1;color:#5A5550;font-size:11px">
             This is an automated message from P2P Recruitment. Please do not reply directly to this email.
           </td></tr>
         </table>
@@ -55,7 +55,7 @@ export class EmailService {
   }
 
   private actionButton(url: string, label: string): string {
-    return `<p style="margin:24px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#D81F27;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">${escapeHtml(label)}</a></p>`;
+    return `<p style="margin:24px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#FF5A22;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">${escapeHtml(label)}</a></p>`;
   }
 
   async sendInvite(invite: InviteLink, linkUrl: string): Promise<void> {
@@ -80,7 +80,7 @@ export class EmailService {
     const notesHtml = invitationNotes
       ? `<div style="margin:20px 0;white-space:pre-line">${escapeHtml(invitationBody)}</div>
          ${invitationSignoff.length
-           ? `<div style="margin-top:24px;padding-left:12px;border-left:3px solid #D81F27;line-height:1.55">
+           ? `<div style="margin-top:24px;padding-left:12px;border-left:3px solid #FF5A22;line-height:1.55">
                 ${invitationSignoff.map((line, index) => `<div style="${index === invitationSignoff.length - 1 ? 'margin-top:4px;color:#5A5550;font-style:italic' : index === 2 ? 'font-weight:700;color:#101010' : 'color:#101010'}">${escapeHtml(line)}</div>`).join('')}
               </div>`
            : ''}`
@@ -122,17 +122,30 @@ export class EmailService {
     `);
   }
 
-  async sendCandidateReview(video: CandidateVideo, decision: 'accepted' | 'reupload_requested', feedback: string): Promise<void> {
-    const recipientName = escapeHtml(video.candidateName);
-    const safeFeedback = escapeHtml(feedback);
-    const approved = decision === 'accepted';
+  async sendCandidateReuploadRequest(videos: CandidateVideo[]): Promise<void> {
+    const requestedVideos = videos
+      .filter((video) => video.adminReviewStatus === 'reupload_requested')
+      .sort((left, right) =>
+      (left.questionNumber || 0) - (right.questionNumber || 0)
+        || new Date(left.submittedAt).getTime() - new Date(right.submittedAt).getTime(),
+    );
+    const firstVideo = requestedVideos[0];
+    if (!firstVideo) throw new Error('There are no videos with a requested reupload.');
+    const recipientName = escapeHtml(firstVideo.candidateName);
+    const reviewRows = requestedVideos.map((video, index) => {
+      const questionNumber = video.questionNumber || index + 1;
+      const question = escapeHtml(video.questionPrompt || `Question ${questionNumber}`);
+      return `<section style="margin:18px 0;padding:14px;border:1px solid #E8E5E1;border-radius:8px">
+        <h2 style="font-size:16px;margin:0 0 8px">Question ${questionNumber}: ${question}</h2>
+      </section>`;
+    }).join('');
     await this.send(
-      video.candidateEmail,
-      approved ? 'Your video submission was approved' : 'A video reupload is requested',
-      `<h1 style="font-size:22px;color:#101010;margin:0 0 16px">${approved ? 'Your submission was approved' : 'A replacement video is requested'}</h1>
+      firstVideo.candidateEmail,
+      'A video reupload is requested',
+      `<h1 style="font-size:22px;color:#101010;margin:0 0 16px">Please reupload the requested video</h1>
         <p>Hello ${recipientName},</p>
-        <p>${approved ? 'Your video submission has been approved.' : 'Please reupload the requested video using your existing candidate upload link.'}</p>
-        <div style="margin-top:18px;padding:14px;background:#F5F2EE;border-left:4px solid #D81F27;border-radius:6px"><strong>Admin feedback</strong><br>${safeFeedback.replace(/\n/g, '<br>')}</div>`,
+        <p>Please use your existing candidate upload link to replace the following video response${requestedVideos.length === 1 ? '' : 's'}.</p>
+        ${reviewRows}`,
     );
   }
 
@@ -143,7 +156,7 @@ export class EmailService {
       <h1 style="font-size:22px;color:#101010;margin:0 0 16px">Submission received</h1>
       <p>Hello ${name},</p>
       <p>Your upload for <strong>${role}</strong> was received successfully. We received ${videoCount} video${videoCount === 1 ? '' : 's'} and your submission is now queued for review.</p>
-      <p>We’ll email you if the hiring team needs any changes or when there is an update.</p>
+      <p>We’ll email you if the hiring team needs a replacement video.</p>
     `);
   }
 
@@ -179,7 +192,7 @@ export class EmailService {
       <h1 style="font-size:22px;color:#101010;margin:0 0 16px">Evaluation completed</h1>
       <p>${evaluator} completed the evaluation for <strong>${name}</strong> — ${role}.</p>
       <p><strong>Decision:</strong> ${decision}${video.evaluation?.overallScore !== undefined ? ` · <strong>Score:</strong> ${video.evaluation.overallScore}%` : ''}</p>
-      ${notes ? `<div style="margin-top:18px;padding:14px;background:#F5F2EE;border-left:4px solid #D81F27;border-radius:6px"><strong>Evaluation notes</strong><br>${notes.replace(/\n/g, '<br>')}</div>` : ''}
+      ${notes ? `<div style="margin-top:18px;padding:14px;background:#FFFFFF;border-left:4px solid #FF5A22;border-radius:6px"><strong>Evaluation notes</strong><br>${notes.replace(/\n/g, '<br>')}</div>` : ''}
       ${this.actionButton(portalUrl, 'Open admin portal')}
     `);
   }

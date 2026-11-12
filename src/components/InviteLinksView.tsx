@@ -252,7 +252,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1050px] border-collapse text-left">
               <thead>
-                <tr className="border-b border-[#E8E5E1] bg-[#F5F2EE] text-[10px] font-bold uppercase tracking-wider text-[#5A5550]">
+                <tr className="border-b border-[#E8E5E1] bg-[#FFFFFF] text-[10px] font-bold uppercase tracking-wider text-[#5A5550]">
                   <th className="px-4 py-3">Link type</th>
                   <th className="px-4 py-3">Recipient</th>
                   <th className="px-4 py-3">Candidate / position</th>
@@ -367,7 +367,7 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
                                   await onQueryChange(page, filterType, search, filterView);
                                 }
                               }}
-                              className="rounded-lg border border-[#E8E5E1] p-1.5 text-[#5A5550] hover:bg-[#F5F2EE]"
+                              className="rounded-lg border border-[#E8E5E1] p-1.5 text-[#5A5550] hover:bg-[#FFFFFF]"
                             >
                               <span className="material-symbols-outlined block text-[16px]">{isArchived ? 'unarchive' : 'archive'}</span>
                             </button>
@@ -475,13 +475,19 @@ export const InviteLinksView: React.FC<InviteLinksViewProps> = ({
             {videos.filter((video) => getSubmissionId(video) === (inviteLinks.find((link) => link.id === reviewingInviteId)?.submissionId || reviewingInviteId)).map((video, index) => (
               <div key={video.id} className="flex justify-between items-center gap-3 border rounded-xl p-3">
                 <div>
-                  <p className="text-xs font-bold">{index + 1}. {video.questionPrompt || `${video.roleApplied} submission`}</p>
+                  <p className="text-xs font-bold">Question {video.questionNumber || index + 1}: {video.questionPrompt || `${video.roleApplied} submission`}</p>
                   <p className="text-[11px] text-[#8A8580]">
-                    {video.submittedTimeAgo} · {video.adminReviewStatus === 'accepted'
-                      ? 'Approved'
+                    {video.submittedTimeAgo} · <span className={video.adminReviewStatus === 'accepted'
+                      ? 'font-semibold text-emerald-700'
                       : video.adminReviewStatus === 'reupload_requested'
-                      ? 'Waiting for reupload'
-                      : video.wasReuploaded ? 'Reuploaded · waiting for admin approval' : 'Awaiting review'}
+                        ? 'font-semibold text-red-700'
+                        : ''}>
+                      {video.adminReviewStatus === 'accepted'
+                        ? 'Approved'
+                        : video.adminReviewStatus === 'reupload_requested'
+                          ? 'Reupload requested'
+                          : video.wasReuploaded ? 'Reuploaded · waiting for admin approval' : 'Awaiting review'}
+                    </span>
                     {video.evaluation?.decision && ` · Manager decision: ${video.evaluation.decision}`}
                   </p>
                 </div>

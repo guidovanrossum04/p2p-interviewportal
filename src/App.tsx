@@ -22,6 +22,7 @@ import {
   initialInviteLinks,
 } from './data/mockData';
 import { GENERIC_AVATAR } from './data/placeholders';
+import { standardEvaluationRubric } from './data/adminReviewRubric';
 
 // Components
 import { AuthScreen } from './components/AuthScreen';
@@ -441,20 +442,12 @@ export default function App() {
     videoCount?: number;
     questionPrompt?: string;
     questionPrompts?: string[];
-    adminSupportingDocuments?: File[];
   }): Promise<InviteLink> => {
     try {
-      const { adminSupportingDocuments = [], ...invitePayload } = inviteData;
-      const formData = new FormData();
-      Object.entries({ ...invitePayload, createdBy: currentUser.name }).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
-        }
-      });
-      adminSupportingDocuments.forEach((file) => formData.append('adminSupportingDocuments', file));
       const res = await fetch('/api/invites', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...inviteData, createdBy: currentUser.name }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Could not create the share link.');
@@ -580,16 +573,12 @@ export default function App() {
 
   // Evaluation submission
   const handleSubmitEvaluation = async (evaluationData: {
-    videoId: string;
-    scores: Record<string, number>;
-    rubricWeights: SystemSettings['rubricWeights'];
     decision: 'selected' | 'rejected';
+    scores: Record<string, number>;
     notes: string;
-    aiSummary?: string;
-    keyStrengths?: string[];
-    areasToImprove?: string[];
   }) => {
     let notificationEmailNotice = '';
+    let completedVideoCount = selectedSubmissionVideos.length || 1;
     try {
       const reviewUrl = activeInvite?.type === 'evaluator'
         ? `/api/public/links/${encodeURIComponent(activeInvite.token)}/review`
@@ -598,7 +587,9 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...evaluationData,
+          overallDecision: evaluationData.decision,
+          scores: evaluationData.scores,
+          notes: evaluationData.notes,
           evaluatorId: currentUser.id,
           evaluatorName: currentUser.name,
         }),
@@ -612,60 +603,68 @@ export default function App() {
       if (res.ok) {
         const result = await res.json();
         notificationEmailNotice = typeof result.emailNotice === 'string' ? result.emailNotice : '';
-        if (result.video) {
-          setVideos((prev) => prev.map((v) => (v.id === result.video.id ? result.video : v)));
+        const reviewedVideos = Array.isArray(result.videos)
+          ? result.videos as CandidateVideo[]
+          : result.video ? [result.video as CandidateVideo] : [];
+        const expectedVideoIds = selectedSubmissionVideos.map((video) => video.id);
+        if (activeInvite?.type === 'evaluator' && (
+          !reviewedVideos.length
+          || reviewedVideos.length !== expectedVideoIds.length
+          || expectedVideoIds.some((videoId) => !reviewedVideos.some((video) => video.id === videoId))
+        )) {
+          throw new Error('The server did not return every video in the overall review.');
         }
+        completedVideoCount = reviewedVideos.length || completedVideoCount;
+        setVideos((previous) => previous.map((video) =>
+          reviewedVideos.find((reviewedVideo) => reviewedVideo.id === video.id) || video,
+        ));
       } else {
-        // Local fallback update
-        const overallScore = Math.round(
-          settings.rubricWeights.reduce(
-            (total, criterion) => total + (evaluationData.scores[criterion.id] || 1) * criterion.weight,
-            0,
-          ) / 5,
-        );
-
-        setVideos((prev) =>
-          prev.map((v) =>
-            v.id === evaluationData.videoId
-              ? {
-                  ...v,
-                  status: 'completed',
-                  evaluation: {
-                    evaluatorId: currentUser.id,
-                    evaluatorName: currentUser.name,
-                    evaluatorTitle: currentUser.title || 'Senior Evaluator',
-                    evaluatorAvatar: currentUser.avatar,
-                    evaluatedAt: new Date().toISOString(),
-                    scores: evaluationData.scores,
-                    rubricWeights: evaluationData.rubricWeights,
-                    overallScore,
-                    decision: evaluationData.decision,
-                    notes: evaluationData.notes,
-                    aiSummary: evaluationData.aiSummary,
-                    keyStrengths: evaluationData.keyStrengths,
-                    areasToImprove: evaluationData.areasToImprove,
-                  },
-                }
-              : v
-          )
-        );
+        const submissionVideos = selectedSubmissionVideos.length
+          ? selectedSubmissionVideos
+          : selectedVideoForEval ? [selectedVideoForEval] : [];
+        completedVideoCount = submissionVideos.length || 1;
+        const evaluationVideoId = submissionVideos[0]?.id || selectedVideoForEval?.id;
+        const evaluation = {
+          evaluatorId: currentUser.id,
+          evaluatorName: currentUser.name,
+          evaluatorTitle: currentUser.title || 'Senior Evaluator',
+          evaluatorAvatar: currentUser.avatar,
+          evaluatedAt: new Date().toISOString(),
+          scores: evaluationData.scores,
+          rubricWeights: standardEvaluationRubric,
+          overallScore: Math.round(
+            standardEvaluationRubric.reduce(
+              (total, criterion) => total + evaluationData.scores[criterion.id] * criterion.weight,
+              0,
+            ) / 5,
+          ),
+          decision: evaluationData.decision,
+          notes: evaluationData.notes,
+        };
+        setVideos((previous) => previous.map((video) => submissionVideos.some((item) => item.id === video.id)
+          ? {
+              ...video,
+              status: 'completed',
+              ...(video.id === evaluationVideoId ? { evaluation } : {}),
+            }
+          : video));
       }
 
       setEvaluatorStats((prev) => ({
         ...prev,
-        pendingReview: Math.max(0, prev.pendingReview - 1),
-        completed: prev.completed + 1,
+        pendingReview: Math.max(0, prev.pendingReview - completedVideoCount),
+        completed: prev.completed + completedVideoCount,
       }));
 
       setStats((prev) => ({
         ...prev,
-        pendingAssignments: Math.max(0, prev.pendingAssignments - 1),
+        pendingAssignments: Math.max(0, prev.pendingAssignments - completedVideoCount),
         completedEvals: prev.completedEvals + 1,
       }));
 
       showToast(notificationEmailNotice
         ? `Evaluation recorded, but admin email failed: ${notificationEmailNotice}`
-        : `Evaluation recorded for candidate! Status: ${evaluationData.decision.toUpperCase()}`);
+        : 'Overall candidate review submitted.');
     } catch (e) {
       console.error('Evaluation submit error', e);
       showToast(e instanceof Error ? e.message : 'Could not submit this evaluation.');
@@ -788,12 +787,34 @@ export default function App() {
     setVideos((previous) => previous.map((video) => video.id === videoId ? reviewedVideo : video));
     setAssignmentRefreshKey((current) => current + 1);
     setSelectedVideoForEval(reviewedVideo);
-    showToast(result.emailNotice
-      ? `Review saved. Email not sent: ${result.emailNotice}`
-      : result.emailSent
-      ? 'Review saved and candidate notified by email.'
-      : decision === 'accepted' ? 'Video accepted for Manager / Employer assignment.' : 'Reupload requested.');
+    showToast(decision === 'accepted'
+      ? 'Question review saved. Review the remaining videos, then use final submit.'
+      : 'Reupload request saved. Review the remaining videos, then use final submit.');
     return reviewedVideo;
+  };
+
+  const handleFinalSubmitReview = async (submissionId: string): Promise<void> => {
+    const response = await fetch(`/api/submissions/${encodeURIComponent(submissionId)}/final-review`, {
+      method: 'POST',
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Could not submit the overall review.');
+    if (!Array.isArray(result.videos)) throw new Error('The server did not return the submitted review status.');
+    const submittedVideos = result.videos as CandidateVideo[];
+    setVideos((previous) => previous.map((video) =>
+      submittedVideos.find((submittedVideo) => submittedVideo.id === video.id) || video,
+    ));
+    setAssignmentRefreshKey((current) => current + 1);
+    setSelectedVideoForEval((current) => current
+      ? submittedVideos.find((submittedVideo) => submittedVideo.id === current.id) || current
+      : current);
+    showToast(result.emailNotice
+      ? `Review saved, but reupload email not sent. Fix email settings and retry: ${result.emailNotice}`
+      : result.alreadySubmitted
+        ? 'The overall review has already been submitted.'
+        : submittedVideos.some((video) => video.adminReviewStatus === 'reupload_requested')
+          ? 'Overall review submitted and candidate informed about requested reuploads.'
+          : 'Overall review submitted.');
   };
 
   // Save System Settings
@@ -884,7 +905,7 @@ export default function App() {
   // If explicitly logged out, render AuthScreen
   if (isRestoringAdminSession) {
     return (
-      <div className="min-h-screen bg-[#F5F2EE] flex items-center justify-center text-sm font-medium text-red-900">
+      <div className="min-h-screen bg-[#FFFFFF] flex items-center justify-center text-sm font-medium text-red-900">
         Restoring your admin session...
       </div>
     );
@@ -902,9 +923,10 @@ export default function App() {
   const evaluators = users.filter((u) => u.role === 'evaluator');
   const selectedSubmissionVideos = selectedVideoForEval && (userRole === 'evaluator' || userRole === 'admin')
     ? videos.filter((video) => getSubmissionId(video) === getSubmissionId(selectedVideoForEval))
+      .sort((left, right) => (left.questionNumber ?? Number.MAX_SAFE_INTEGER) - (right.questionNumber ?? Number.MAX_SAFE_INTEGER))
     : [];
   return (
-    <div className="min-h-screen bg-[#F5F2EE] text-[#101010] flex selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-[#FFFFFF] text-[#101010] flex selection:bg-red-600 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#101010] text-white px-4 py-2.5 rounded-xl shadow-xl border border-red-900/50 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200">
@@ -959,7 +981,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'candidate_hub' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                      currentTab === 'candidate_hub' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">video_library</span> My Submissions
@@ -970,7 +992,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'guidelines' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                      currentTab === 'guidelines' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">help_outline</span> Prep &amp; Guidelines
@@ -984,7 +1006,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'overview' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                      currentTab === 'overview' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">dashboard</span> Overview
@@ -995,7 +1017,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'links' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                      currentTab === 'links' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">link</span> Shareable Links
@@ -1006,7 +1028,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'users' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                      currentTab === 'users' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">group</span> User &amp; Roles
@@ -1017,7 +1039,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'videos' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                      currentTab === 'videos' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">video_library</span> Submissions
@@ -1031,7 +1053,7 @@ export default function App() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                      currentTab === 'dashboard' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                      currentTab === 'dashboard' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">dashboard</span> Dashboard
@@ -1045,7 +1067,7 @@ export default function App() {
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    currentTab === 'settings' ? 'bg-[#F5F2EE] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#F5F2EE]'
+                    currentTab === 'settings' ? 'bg-[#FFFFFF] text-[#101010] font-bold border border-[#E8E5E1]' : 'text-[#101010] hover:bg-[#FFFFFF]'
                   }`}
                 >
                   <span className="material-symbols-outlined text-base">settings</span> Settings
@@ -1184,19 +1206,17 @@ export default function App() {
         </main>
       </div>
 
-      {/* Candidate Video Player & Evaluation Rubric Modal */}
+      {/* Candidate Video Player & Evaluation Modal */}
       {selectedVideoForEval && (
         <VideoPlayerEvaluationModal
           video={selectedVideoForEval}
-          rubricWeights={activeInvite?.type === 'evaluator' && activeInvite.rubricWeights?.length
-            ? activeInvite.rubricWeights
-            : settings.rubricWeights}
           submissionVideos={selectedSubmissionVideos}
           onSelectSubmissionVideo={setSelectedVideoForEval}
           onClose={() => setSelectedVideoForEval(null)}
           readOnly={userRole !== 'evaluator'}
           canReviewSubmission={userRole === 'admin'}
           onReviewSubmission={handleReviewVideo}
+          onFinalSubmitReview={handleFinalSubmitReview}
           onSubmitEvaluation={handleSubmitEvaluation}
         />
       )}

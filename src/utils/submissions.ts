@@ -14,7 +14,12 @@ export const groupVideosBySubmission = (videos: CandidateVideo[]): VideoSubmissi
     const id = getSubmissionId(video);
     groups.set(id, [...(groups.get(id) || []), video]);
   });
-  return Array.from(groups, ([id, submissionVideos]) => ({ id, videos: submissionVideos }));
+  return Array.from(groups, ([id, submissionVideos]) => ({
+    id,
+    videos: submissionVideos.sort((left, right) =>
+      (left.questionNumber ?? Number.MAX_SAFE_INTEGER) - (right.questionNumber ?? Number.MAX_SAFE_INTEGER),
+    ),
+  }));
 };
 
 export const fetchAssignableSubmissions = async (signal?: AbortSignal): Promise<CandidateVideo[]> => {

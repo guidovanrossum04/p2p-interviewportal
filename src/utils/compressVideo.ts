@@ -1,14 +1,6 @@
-export interface VideoCompressionResult {
-  file: File;
-  compressed: boolean;
-}
-
-export async function compressVideo(
-  file: File,
-  onProgress?: (progress: number) => void,
-): Promise<VideoCompressionResult> {
+export async function compressVideo(file: File): Promise<File> {
   if (!HTMLCanvasElement.prototype.captureStream || typeof MediaRecorder === 'undefined') {
-    throw new Error('Video compression is not supported by this browser. Turn off compression or use another browser.');
+    throw new Error('Could not process this video. Try another file or browser.');
   }
 
   const sourceUrl = URL.createObjectURL(file);
@@ -21,7 +13,7 @@ export async function compressVideo(
     || captureStreamElement.webkitCaptureStream?.bind(video);
   if (!getAudioStream) {
     URL.revokeObjectURL(sourceUrl);
-    throw new Error('Video compression is not supported by this browser. Turn off compression or use another browser.');
+    throw new Error('Could not process this video. Try another file or browser.');
   }
   video.preload = 'auto';
   video.playsInline = true;
@@ -35,7 +27,7 @@ export async function compressVideo(
   try {
     await new Promise<void>((resolve, reject) => {
       video.addEventListener('loadedmetadata', () => resolve(), { once: true });
-      video.addEventListener('error', () => reject(new Error('Could not read this video for compression.')), { once: true });
+      video.addEventListener('error', () => reject(new Error('Could not process this video. Try another file.')), { once: true });
       video.load();
     });
 
@@ -44,7 +36,7 @@ export async function compressVideo(
     canvas.width = Math.max(2, Math.floor(video.videoWidth * scale / 2) * 2);
     canvas.height = Math.max(2, Math.floor(video.videoHeight * scale / 2) * 2);
     const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not prepare this video for compression.');
+    if (!context) throw new Error('Could not process this video. Try another file.');
 
     canvasStream = canvas.captureStream(24);
     audioStream = getAudioStream();
@@ -52,7 +44,7 @@ export async function compressVideo(
 
     const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/mp4']
       .find((type) => MediaRecorder.isTypeSupported(type));
-    if (!mimeType) throw new Error('This browser does not support a format for compressed video.');
+    if (!mimeType) throw new Error('Could not process this video. Try another file or browser.');
 
     recorder = new MediaRecorder(canvasStream, {
       mimeType,
@@ -66,11 +58,11 @@ export async function compressVideo(
 
     const recordingFinished = new Promise<Blob>((resolve, reject) => {
       if (!recorder) {
-        reject(new Error('Could not start video compression.'));
+        reject(new Error('Could not process this video. Try another file.'));
         return;
       }
       recorder.addEventListener('stop', () => resolve(new Blob(chunks, { type: mimeType })), { once: true });
-      recorder.addEventListener('error', () => reject(new Error('Video compression failed.')), { once: true });
+      recorder.addEventListener('error', () => reject(new Error('Could not process this video. Try another file.')), { once: true });
     });
 
     const drawFrame = () => {
@@ -80,10 +72,6 @@ export async function compressVideo(
       if (!video.ended) frameId = window.requestAnimationFrame(drawFrame);
     };
 
-    const updateProgress = () => {
-      if (video.duration > 0) onProgress?.(Math.min(99, Math.round((video.currentTime / video.duration) * 100)));
-    };
-    video.addEventListener('timeupdate', updateProgress);
     video.addEventListener('ended', () => {
       if (recorder?.state === 'recording') recorder.stop();
     }, { once: true });
@@ -92,17 +80,12 @@ export async function compressVideo(
     drawFrame();
     await video.play();
     const compressedBlob = await recordingFinished;
-    onProgress?.(100);
 
-    if (!compressedBlob.size) throw new Error('Video compression produced an empty file.');
-    if (compressedBlob.size >= file.size) return { file, compressed: false };
+    if (!compressedBlob.size) throw new Error('Could not process this video. Try another file.');
 
     const extension = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
     const baseName = file.name.replace(/\.[^.]+$/, '');
-    return {
-      file: new File([compressedBlob], `${baseName}.${extension}`, { type: mimeType }),
-      compressed: true,
-    };
+    return new File([compressedBlob], `${baseName}.${extension}`, { type: mimeType });
   } finally {
     window.cancelAnimationFrame(frameId);
     if (recorder?.state === 'recording') recorder.stop();

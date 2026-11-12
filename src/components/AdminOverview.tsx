@@ -70,7 +70,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
         </div>
       )}
       {/* Admin Link Generation & Access Hub Banner */}
-      <div className="bg-[#D81F27] rounded-2xl p-6 text-white shadow-md border border-black/10 space-y-4">
+      <div className="bg-red-600 rounded-2xl p-6 text-white shadow-md border border-black/10 space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="space-y-1.5 max-w-2xl">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-[11px] font-bold tracking-wide uppercase text-white">
@@ -249,7 +249,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                     <span className="font-semibold text-[#101010]">{item.label}</span>
                     <span className="font-mono font-bold text-[#101010]">{item.count}</span>
                   </div>
-                  <div className="w-full h-3 rounded-full bg-[#F5F2EE] overflow-hidden">
+                  <div className="w-full h-3 rounded-full bg-[#FFFFFF] overflow-hidden">
                     <div
                       className={`${item.color} h-full rounded-full transition-all duration-500`}
                       style={{ width: `${(item.count / maxEvaluationCount) * 100}%` }}

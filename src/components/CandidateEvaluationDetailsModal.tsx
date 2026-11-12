@@ -14,7 +14,7 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
   onWatchVideo,
 }) => {
   const evalData = video.evaluation;
-  const overallScore = evalData?.overallScore || 85;
+  const overallScore = evalData?.overallScore ?? 0;
   const isEvaluated = video.status === 'completed' || !!evalData;
   const defaultRubric = [
     { id: 'communication', name: 'Communication & Articulation', weight: 25 },
@@ -22,7 +22,10 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
     { id: 'problemSolving', name: 'Problem Solving & Reasoning', weight: 25 },
     { id: 'cultureFit', name: 'Culture Fit & Collaboration', weight: 15 },
   ];
-  const rubric = evalData?.rubricWeights || defaultRubric;
+  const rubric = evalData?.rubricWeights?.length
+    ? evalData.rubricWeights
+    : Object.keys(evalData?.scores || {}).length ? defaultRubric : [];
+  const hasRubricScore = rubric.length > 0;
 
   const getDecisionBadge = (decision?: string) => {
     switch (decision) {
@@ -41,10 +44,18 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
           </span>
         );
       case 'reject':
+      case 'rejected':
         return (
-          <span className="px-3 py-1 bg-[#FEF2F2] text-[#D81F27] border border-[#FECACA] rounded-full text-xs font-bold flex items-center gap-1.5">
+          <span className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-full text-xs font-bold flex items-center gap-1.5">
             <span className="material-symbols-outlined text-sm">cancel</span>
             Archived / Not Selected
+          </span>
+        );
+      case 'selected':
+        return (
+          <span className="px-3 py-1 bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] rounded-full text-xs font-bold flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sm">check_circle</span>
+            Recruit Candidate
           </span>
         );
       default:
@@ -68,7 +79,7 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-[#E8E5E1] flex justify-between items-start shrink-0 bg-gradient-to-r from-red-50/40 via-white to-red-50/20">
+        <div className="p-6 border-b border-[#E8E5E1] flex justify-between items-start shrink-0 bg-white">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800 border border-red-200">
@@ -96,18 +107,20 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
 
         {/* Scrollable Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
-          {/* Top Decision & Overall Score Banner */}
-          <div className="bg-[#F5F2EE] rounded-2xl border border-[#E8E5E1] p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          {/* Overall review decision */}
+          <div className="bg-[#FFFFFF] rounded-2xl border border-[#E8E5E1] p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex flex-col items-center justify-center font-bold shrink-0 shadow-md shadow-red-500/20">
-                <span className="text-xl leading-none">{overallScore}</span>
-                <span className="text-[10px] text-red-100 font-normal">/ 100</span>
-              </div>
+              {hasRubricScore && (
+                <div className="w-16 h-16 rounded-2xl bg-red-600 text-white flex flex-col items-center justify-center font-bold shrink-0 shadow-md shadow-red-500/20">
+                  <span className="text-xl leading-none">{overallScore}</span>
+                  <span className="text-[10px] text-red-100 font-normal">/ 100</span>
+                </div>
+              )}
 
               <div>
                 <div className="mb-1.5">{getDecisionBadge(evalData?.decision)}</div>
                 <p className="text-xs text-red-900/70">
-                  Consensus rating calculated across {rubric.length} rubric criteria.
+                  {hasRubricScore ? `Consensus rating calculated across ${rubric.length} rubric criteria.` : 'One overall decision for the candidate submission.'}
                 </p>
               </div>
             </div>
@@ -118,15 +131,14 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
                 onClose();
                 onWatchVideo(video);
               }}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-all flex items-center gap-1.5 shadow-xs shadow-red-500/20 shrink-0 cursor-pointer"
+              className="px-4 py-2 bg-[#343434] hover:bg-[#101010] text-white rounded-lg font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-base">play_circle</span>
+              <span className="material-symbols-outlined text-base">play_arrow</span>
               <span>Watch Submission</span>
             </button>
           </div>
 
-          {/* Core Competencies Rubric Breakdown */}
-          <div>
+          {hasRubricScore && <div>
             <h4 className="font-bold text-xs uppercase tracking-wider text-[#101010] mb-3 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base text-red-600">analytics</span>
               Competency Breakdown & Scorecards
@@ -155,7 +167,7 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
                 </div>
               ))}
             </div>
-          </div>
+          </div>}
 
           {/* Evaluator Notes & Reviewer Card */}
           <div className="bg-white rounded-2xl border border-[#E8E5E1] p-5 space-y-3">
@@ -190,7 +202,7 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
 
             <div>
               <h5 className="font-bold text-xs text-[#101010] mb-1">Manager / Employer Written Feedback:</h5>
-              <p className="text-xs text-[#5A5550] leading-relaxed bg-[#F5F2EE] p-3.5 rounded-xl border border-[#E8E5E1] italic">
+              <p className="text-xs text-[#5A5550] leading-relaxed bg-[#FFFFFF] p-3.5 rounded-xl border border-[#E8E5E1] italic">
                 "{evalData?.notes || 'Candidate presented strong conceptual understanding and communicated answers with clarity.'}"
               </p>
             </div>
@@ -211,7 +223,7 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <div className="bg-[#F5F2EE] border border-[#E8E5E1] rounded-xl p-3.5">
+              <div className="bg-[#FFFFFF] border border-[#E8E5E1] rounded-xl p-3.5">
                 <span className="font-bold text-xs text-red-800 flex items-center gap-1 mb-2">
                   <span className="material-symbols-outlined text-sm text-red-600">thumb_up</span>
                   Key Identified Strengths
@@ -294,9 +306,11 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
                 <div className="flex items-center gap-3">
                   <span className={`w-2 h-2 rounded-full ${isEvaluated ? 'bg-red-600' : 'bg-amber-500 animate-pulse'}`}></span>
                   <div>
-                    <span className="font-bold text-xs text-[#101010]">Comprehensive Rubric Evaluation</span>
+                    <span className="font-bold text-xs text-[#101010]">{hasRubricScore ? 'Comprehensive Rubric Evaluation' : 'Overall Employer Review'}</span>
                     <span className="text-[11px] text-red-900/60 block">
-                      {isEvaluated ? `Consensus reached with score ${overallScore}%` : 'Evaluation in progress'}
+                      {isEvaluated
+                        ? hasRubricScore ? `Consensus reached with score ${overallScore}%` : 'Decision submitted'
+                        : 'Evaluation in progress'}
                     </span>
                   </div>
                 </div>
@@ -309,7 +323,7 @@ export const CandidateEvaluationDetailsModal: React.FC<CandidateEvaluationDetail
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[#E8E5E1] flex justify-end gap-2 shrink-0 bg-[#F5F2EE]">
+        <div className="p-4 border-t border-[#E8E5E1] flex justify-end gap-2 shrink-0 bg-[#FFFFFF]">
           <button
             type="button"
             onClick={onClose}

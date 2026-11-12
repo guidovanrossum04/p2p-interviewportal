@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { CandidateVideo, InviteLink } from '../../types';
+import { standardEvaluationRubric } from '../../data/adminReviewRubric';
 import { CreateInviteInput, EvaluationInput, PortalRepository, ShareLinkRecord, UploadInput } from '../repositories/PortalRepository';
 
 export class PortalError extends Error {
@@ -99,9 +100,7 @@ export class PortalService {
         : {}),
       ...(record.purpose === 'review'
         ? {
-            rubricWeights: Array.isArray(record.rubric_weights) && record.rubric_weights.length
-              ? record.rubric_weights
-              : (await this.repository.getSystemSettings()).rubricWeights,
+            rubricWeights: standardEvaluationRubric,
           }
         : {}),
     };
@@ -163,5 +162,37 @@ export class PortalService {
       throw new PortalError('Feedback is required (maximum 4,000 characters). Explain why the candidate should be recruited or rejected.');
     }
     return this.repository.submitEvaluation(hashToken(token), input);
+  }
+
+  async submitOverallEvaluation(
+    token: string,
+    decision: unknown,
+    scores: unknown,
+    notes: unknown,
+  ): Promise<CandidateVideo[]> {
+    if (decision !== 'selected' && decision !== 'rejected') {
+      throw new PortalError('Choose Recruit Candidate or Reject Candidate before submitting.');
+    }
+    if (!scores || typeof scores !== 'object' || Array.isArray(scores)) {
+      throw new PortalError('Rate every Standard Evaluation Rubric criterion before submitting.');
+    }
+    const scoreValues = scores as Record<string, unknown>;
+    if (
+      Object.keys(scoreValues).length !== standardEvaluationRubric.length
+      || standardEvaluationRubric.some((criterion) =>
+        !Object.prototype.hasOwnProperty.call(scoreValues, criterion.id)
+        || !Number.isInteger(scoreValues[criterion.id])
+        || Number(scoreValues[criterion.id]) < 1
+        || Number(scoreValues[criterion.id]) > 5)
+    ) {
+      throw new PortalError('Rate every Standard Evaluation Rubric criterion before submitting.');
+    }
+    if (typeof notes !== 'string' || !notes.trim() || notes.trim().length > 4000) {
+      throw new PortalError('Add overall feedback (maximum 4,000 characters) before submitting.');
+    }
+    const validatedScores = Object.fromEntries(
+      standardEvaluationRubric.map((criterion) => [criterion.id, Number(scoreValues[criterion.id])]),
+    );
+    return this.repository.submitOverallEvaluation(hashToken(token), decision, validatedScores, notes.trim());
   }
 }

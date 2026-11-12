@@ -179,7 +179,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F2EE] text-[#101010] flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-[#FFFFFF] text-[#101010] flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-red-600 selection:text-white">
       <main className="w-full max-w-lg">
         {/* Brand Header */}
         <div className="text-center mb-6">
@@ -230,7 +230,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                     placeholder="ivornorth@p2precruitment.com.au"
-                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#F5F2EE]/50 focus:bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#FFFFFF]/50 focus:bg-white"
                   />
                 </div>
 
@@ -247,7 +247,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     required
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#F5F2EE]/50 focus:bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all bg-[#FFFFFF]/50 focus:bg-white"
                   />
                 </div>
 
@@ -329,7 +329,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         value={evaluatorToken}
                         onChange={(e) => setEvaluatorToken(e.target.value)}
                         placeholder="e.g. INV-EVAL-3921"
-                        className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E8E5E1] text-xs font-mono font-bold text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
+                        className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E8E5E1] text-xs font-mono font-bold text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FFFFFF]/50 focus:bg-white"
                       />
                     </div>
                     <p className="text-[11px] text-red-900/60 mt-1.5">
@@ -348,7 +348,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         value={evaluatorEmail}
                         onChange={(e) => setEvaluatorEmail(e.target.value)}
                         placeholder="manager@company.com"
-                        className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
+                        className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FFFFFF]/50 focus:bg-white"
                       />
                     </div>
                     <div>
@@ -358,7 +358,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         required
                         value={evaluatorPassword}
                         onChange={(e) => setEvaluatorPassword(e.target.value)}
-                        className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
+                        className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FFFFFF]/50 focus:bg-white"
                       />
                     </div>
                   </>
@@ -425,7 +425,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       value={candidateToken}
                       onChange={(e) => setCandidateToken(e.target.value)}
                       placeholder="e.g. INV-CAND-7842"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E8E5E1] text-xs font-mono font-bold text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E8E5E1] text-xs font-mono font-bold text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FFFFFF]/50 focus:bg-white"
                     />
                   </div>
                   <p className="text-[11px] text-red-900/60 mt-1.5">
@@ -442,7 +442,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     value={candidateEmail}
                     onChange={(e) => setCandidateEmail(e.target.value)}
                       placeholder="candidate@email.com"
-                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#F5F2EE]/50 focus:bg-white"
+                    className="w-full rounded-xl border border-[#E8E5E1] px-3.5 py-2.5 text-xs text-[#101010] focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none bg-[#FFFFFF]/50 focus:bg-white"
                   />
                 </div>
 

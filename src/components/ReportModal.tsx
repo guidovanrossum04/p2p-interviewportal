@@ -54,7 +54,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({ stats, videos, onClose
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden border border-[#E8E5E1] animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
+        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-white">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-red-600 text-xl">assessment</span>
             <h3 className="font-bold text-sm text-[#101010]">HR Talent Analytics & SLA Report</h3>

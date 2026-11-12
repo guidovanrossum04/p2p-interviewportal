@@ -100,8 +100,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setCurrentTab(item.id)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${
                 isActive
-                  ? 'bg-[#F5F2EE] text-[#101010] font-semibold border-l-3 border-[#101010] shadow-xs'
-                  : 'text-[#101010] hover:bg-[#F5F2EE]'
+                  ? 'bg-[#FFFFFF] text-[#101010] font-semibold border-l-3 border-[#101010] shadow-xs'
+                  : 'text-[#101010] hover:bg-[#FFFFFF]'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -130,8 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={onOpenSettings}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 currentTab === 'settings'
-                  ? 'bg-[#F5F2EE] text-[#101010] font-semibold border-l-3 border-[#101010] shadow-xs'
-                  : 'text-[#101010] hover:bg-[#F5F2EE]'
+                  ? 'bg-[#FFFFFF] text-[#101010] font-semibold border-l-3 border-[#101010] shadow-xs'
+                  : 'text-[#101010] hover:bg-[#FFFFFF]'
               }`}
             >
               <span className="material-symbols-outlined text-[20px] text-[#101010]">

@@ -252,9 +252,43 @@ export function createPortalRouter(): Router {
       }
       const video = await repository.reviewVideo(request.params.id, decision, feedback.trim(), scores as Record<string, number>);
       if (!video) return response.status(404).json({ error: 'Video not found.' });
-      const emailNotice = await attemptEmail('Could not email candidate after admin review', () =>
-        emailService.sendCandidateReview(video, decision, feedback.trim()));
-      response.json({ video, emailSent: !emailNotice, emailNotice });
+      response.json({ video });
+    } catch (error) { next(error); }
+  });
+
+  router.post('/submissions/:submissionId/final-review', async (request, response, next) => {
+    try {
+      const { submissionId } = request.params;
+      const submissionVideos = await repository.listSubmissionVideos(submissionId);
+      if (!submissionVideos.length) return response.status(404).json({ error: 'Submission not found.' });
+      if (submissionVideos.some((video) => !video.adminReviewStatus || video.adminReviewStatus === 'pending')) {
+        throw new PortalError('Review every video before submitting the overall review.');
+      }
+      if (submissionVideos.every((video) => video.adminReviewSubmittedAt)) {
+        return response.json({ videos: submissionVideos, alreadySubmitted: true, emailSent: false });
+      }
+
+      const submittedVideos = await repository.markSubmissionReviewSubmitted(submissionId);
+      if (!submittedVideos.length) {
+        const latestVideos = await repository.listSubmissionVideos(submissionId);
+        if (latestVideos.every((video) => video.adminReviewSubmittedAt)) {
+          return response.json({ videos: latestVideos, alreadySubmitted: true, emailSent: false });
+        }
+        throw new PortalError('The overall review could not be submitted. Refresh the submission and try again.');
+      }
+      const hasReuploadRequests = submittedVideos.some((video) => video.adminReviewStatus === 'reupload_requested');
+      const emailNotice = hasReuploadRequests
+        ? await attemptEmail('Could not email candidate about requested reuploads', () =>
+          emailService.sendCandidateReuploadRequest(submittedVideos))
+        : '';
+      if (emailNotice) {
+        await repository.clearSubmissionReviewSubmitted(submissionId);
+      }
+      response.json({
+        videos: emailNotice ? await repository.listSubmissionVideos(submissionId) : submittedVideos,
+        emailSent: !emailNotice,
+        emailNotice,
+      });
     } catch (error) { next(error); }
   });
 
@@ -327,8 +361,7 @@ export function createPortalRouter(): Router {
     } catch (error) { next(error); }
   });
 
-  router.post('/invites', upload.fields([{ name: 'adminSupportingDocuments', maxCount: 20 }]), async (request, response, next) => {
-    const uploadedDocuments = (request.files as { adminSupportingDocuments?: Express.Multer.File[] } | undefined)?.adminSupportingDocuments || [];
+  router.post('/invites', async (request, response, next) => {
     try {
       const {
         type,
@@ -347,12 +380,6 @@ export function createPortalRouter(): Router {
         questionPrompts,
       } = request.body;
       if (type !== 'candidate' && type !== 'evaluator') throw new PortalError('Link type must be candidate or evaluator.');
-      if (type !== 'evaluator' && uploadedDocuments.length > 0) {
-        throw new PortalError('Supporting documents can only be attached to a Manager / Employer review link.');
-      }
-      if (uploadedDocuments.some((document) => document.size > 25 * 1024 * 1024)) {
-        throw new PortalError('Each supporting document must be 25 MB or smaller.');
-      }
       let parsedQuestionPrompts: unknown = questionPrompts;
       if (typeof questionPrompts === 'string') {
         try {
@@ -389,20 +416,12 @@ export function createPortalRouter(): Router {
         videoCount: Number(videoCount) || undefined,
         questionPrompt: typeof questionPrompt === 'string' ? questionPrompt : undefined,
         questionPrompts: Array.isArray(parsedQuestionPrompts) ? parsedQuestionPrompts.filter((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim())) : undefined,
-        adminSupportingDocuments: uploadedDocuments.map((file) => ({
-          id: randomUUID(),
-          filePath: path.relative(process.cwd(), file.path),
-          originalFilename: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-        })),
       });
       const origin = process.env.APP_URL || `${request.protocol}://${request.get('host')}`;
       const emailNotice = await attemptEmail(`Could not email ${invite.type} invitation`, () =>
         emailService.sendInvite(invite, `${origin}/?portal=${invite.type}&token=${encodeURIComponent(invite.token)}`));
       response.status(201).json({ ...invite, emailSent: !emailNotice, emailNotice });
     } catch (error) {
-      await Promise.all(uploadedDocuments.map((file) => unlink(file.path).catch(() => undefined)));
       next(error);
     }
   });
@@ -555,6 +574,7 @@ export function createPortalRouter(): Router {
           originalFilename: file.originalname,
           mimeType: file.mimetype,
           questionPrompt: questionPrompts[index],
+          questionNumber: index + 1,
         })),
         documents: [],
       });
@@ -632,6 +652,24 @@ export function createPortalRouter(): Router {
 
   router.post('/public/links/:token/review', authorizeLink('review'), async (request, response, next) => {
     try {
+      if (Object.prototype.hasOwnProperty.call(request.body || {}, 'overallDecision')) {
+        const { overallDecision, scores, notes } = request.body;
+        const videos = await service.submitOverallEvaluation(request.params.token, overallDecision, scores, notes);
+        const firstVideo = videos[0];
+        if (!firstVideo) throw new PortalError('The overall review did not include any assigned videos.');
+        const submissionId = firstVideo.submissionId || firstVideo.submissionBatchId || firstVideo.id;
+        publishAdminNotification({
+          id: randomUUID(),
+          type: 'assignment_updated',
+          title: 'Manager / Employer completed a submission review',
+          description: `${firstVideo.assignedEvaluatorName || 'A Manager / Employer'} completed the review for ${firstVideo.candidateName}'s ${firstVideo.roleApplied} submission.`,
+          timestamp: new Date().toISOString(),
+          icon: 'fact_check',
+          submissionId,
+        });
+        response.json({ success: true, videos });
+        return;
+      }
       const { videoId, scores, decision, notes, aiSummary, keyStrengths, areasToImprove } = request.body;
       const video = await service.submitEvaluation(request.params.token, { videoId, scores, decision, notes: String(notes || ''), aiSummary, keyStrengths, areasToImprove });
       const submissionId = video.submissionId || video.submissionBatchId || video.id;
@@ -644,10 +682,7 @@ export function createPortalRouter(): Router {
         icon: 'fact_check',
         submissionId,
       });
-      const origin = process.env.APP_URL || `${request.protocol}://${request.get('host')}`;
-      const emailNotice = await attemptEmail('Could not notify admin of completed employer evaluation', () =>
-        emailService.sendAdminEvaluationCompleted(video, `${origin}/`));
-      response.json({ success: true, video, emailSent: !emailNotice, emailNotice });
+      response.json({ success: true, video });
     } catch (error) { next(error); }
   });
 

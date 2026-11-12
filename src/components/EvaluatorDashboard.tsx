@@ -219,7 +219,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({
                       {/* Candidate with avatar initials */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                          <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                             {getInitials(video.candidateName)}
                           </div>
                           <div>

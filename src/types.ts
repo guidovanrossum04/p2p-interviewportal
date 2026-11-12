@@ -65,6 +65,7 @@ export interface CandidateVideo {
   submittedAt: string;
   submittedTimeAgo: string;
   questionPrompt?: string;
+  questionNumber?: number;
   status: 'pending' | 'in_review' | 'completed';
   videoUrl: string;
   thumbnailUrl?: string;
@@ -86,6 +87,7 @@ export interface CandidateVideo {
   adminFeedback?: string;
   adminReviewScores?: Record<string, number>;
   adminOverallRating?: number;
+  adminReviewSubmittedAt?: string;
   experienceYears?: number;
   resumeUrl?: string;
   documents?: CandidateDocument[];

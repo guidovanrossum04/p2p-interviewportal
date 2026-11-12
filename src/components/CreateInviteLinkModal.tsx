@@ -58,7 +58,6 @@ interface CreateInviteLinkModalProps {
     videoCount?: number;
     questionPrompt?: string;
     questionPrompts?: string[];
-    adminSupportingDocuments?: File[];
   }) => Promise<InviteLink>;
 }
 
@@ -86,7 +85,6 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
   const [answerMode, setAnswerMode] = useState<CandidateAnswerMode>('upload');
   const [selectedQuestionIndexes, setSelectedQuestionIndexes] = useState<number[]>(candidateQuestions.map((_, index) => index));
   const [isQuestionDropdownOpen, setIsQuestionDropdownOpen] = useState(false);
-  const [adminSupportingDocuments, setAdminSupportingDocuments] = useState<File[]>([]);
   const [assignedVideoIds, setAssignedVideoIds] = useState<string[]>([]);
   const selectedQuestionPrompts = selectedQuestionIndexes.map((index) => candidateQuestions[index]).filter(Boolean);
   const derivedVideoCount = selectedQuestionPrompts.length || 1;
@@ -221,7 +219,6 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
         videoCount: type === 'candidate' ? derivedVideoCount : undefined,
         questionPrompt: type === 'candidate' && inviteQuestionPrompts.length === 1 ? inviteQuestionPrompts[0] : undefined,
         questionPrompts: type === 'candidate' ? inviteQuestionPrompts : undefined,
-        adminSupportingDocuments: type === 'evaluator' ? adminSupportingDocuments : undefined,
       });
       setCreatedInvite(invite);
     } catch (error) {
@@ -608,40 +605,6 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 </div>
               )}
 
-              {/* Evaluator Assignment Target Video */}
-              {type === 'evaluator' && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#101010] mb-1">Supporting Documents (optional)</label>
-                  <p className="mb-2 text-[11px] text-[#5A5550]">Admin-provided files for the assigned submission. Candidates will not be asked to upload these.</p>
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
-                    onChange={(event) => {
-                      const files: File[] = event.currentTarget.files ? Array.from(event.currentTarget.files) : [];
-                      if (files.length > 20) {
-                        setAdminSupportingDocuments([]);
-                        setErrorMessage('Select no more than 20 supporting documents.');
-                        event.currentTarget.value = '';
-                        return;
-                      }
-                      if (files.some((file) => file.size > 25 * 1024 * 1024)) {
-                        setAdminSupportingDocuments([]);
-                        setErrorMessage('Each supporting document must be 25 MB or smaller.');
-                        event.currentTarget.value = '';
-                        return;
-                      }
-                      setErrorMessage(null);
-                      setAdminSupportingDocuments(files);
-                    }}
-                    className="block w-full rounded-xl border border-[#E8E5E1] bg-white px-3 py-2 text-[11px] text-[#4D4A47]"
-                  />
-                  {adminSupportingDocuments.length > 0 && (
-                    <p className="mt-1 text-[11px] text-[#5A5550]">{adminSupportingDocuments.length} file{adminSupportingDocuments.length === 1 ? '' : 's'} selected</p>
-                  )}
-                </div>
-              )}
-
               {type === 'evaluator' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#101010] mb-1">
@@ -698,7 +661,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
                 </label>
                 {type === 'candidate' && (
                   <div className="overflow-hidden rounded-xl border border-[#E8E5E1] bg-white">
-                    <div className="flex items-center gap-3 border-b border-[#E8E5E1] bg-[#F5F2EE] px-4 py-3">
+                    <div className="flex items-center gap-3 border-b border-[#E8E5E1] bg-[#FFFFFF] px-4 py-3">
                       <img src={p2pLogo} alt="P2P Recruitment" className="h-10 w-auto object-contain" />
                       <div className="text-[10px] text-[#5A5550]">
                         <p><strong>To:</strong> {recipientEmail || 'Candidate'}</p>
@@ -771,7 +734,7 @@ export const CreateInviteLinkModal: React.FC<CreateInviteLinkModalProps> = ({
               </div>
 
               {/* Link Details Card */}
-              <div className="bg-[#F5F2EE] p-4 rounded-2xl border border-[#E8E5E1] space-y-3">
+              <div className="bg-[#FFFFFF] p-4 rounded-2xl border border-[#E8E5E1] space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-[#101010] uppercase text-[10px]">Recipient</span>
                   <span className="font-semibold text-[#101010]">

@@ -8,7 +8,7 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden border border-[#E8E5E1] animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-gradient-to-r from-red-50/50 via-white to-red-50/30">
+        <div className="px-6 py-4 border-b border-[#E8E5E1] flex justify-between items-center bg-white">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-red-600 text-xl">menu_book</span>
             <h3 className="font-bold text-sm text-[#101010]">InterviewPro Evaluation Suite Manual</h3>
@@ -19,7 +19,7 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({ onClose }) => {
         </div>
 
         <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs text-[#101010] leading-relaxed">
-          <div className="p-4 rounded-xl bg-[#F5F2EE] border border-[#E8E5E1]">
+          <div className="p-4 rounded-xl bg-[#FFFFFF] border border-[#E8E5E1]">
             <h4 className="font-bold text-xs text-[#101010] mb-1">1. Manager / Employer Review Queue & Rubric Scoring</h4>
             <p className="text-red-900/70">
               Managers / Employers review assigned candidate videos within the 24-hour SLA window. Use the built-in video player with
@@ -27,7 +27,7 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({ onClose }) => {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#F5F2EE] border border-[#E8E5E1]">
+          <div className="p-4 rounded-xl bg-[#FFFFFF] border border-[#E8E5E1]">
             <h4 className="font-bold text-xs text-[#101010] mb-1">2. AI-Powered Evaluation Co-pilot</h4>
             <p className="text-red-900/70">
               The platform utilizes Google Gemini AI to analyze candidate submissions and evaluator observations, formulating
@@ -35,7 +35,7 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({ onClose }) => {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#F5F2EE] border border-[#E8E5E1]">
+          <div className="p-4 rounded-xl bg-[#FFFFFF] border border-[#E8E5E1]">
             <h4 className="font-bold text-xs text-[#101010] mb-1">3. Admin Dashboard & Batch Ingestion</h4>
             <p className="text-red-900/70">
               Administrators can track global user growth, video intake, SLA compliance rates, and dispatch batch video
@@ -43,7 +43,7 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({ onClose }) => {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#F5F2EE] border border-[#E8E5E1]">
+          <div className="p-4 rounded-xl bg-[#FFFFFF] border border-[#E8E5E1]">
             <h4 className="font-bold text-xs text-[#101010] mb-1">4. Role Switching & Candidate Portal</h4>
             <p className="text-red-900/70">
               Easily toggle between <strong>Candidate</strong>, <strong>Manager / Employer</strong>, and <strong>Administrator</strong> via the profile avatar menu or log out to switch personas.
