@@ -15,6 +15,27 @@ import { CandidateVideo } from '../../types';
 const storageDirectory = path.resolve(process.cwd(), 'storage', 'videos');
 mkdirSync(storageDirectory, { recursive: true });
 
+const getPublicAppUrl = (): string => {
+  const configuredUrl = process.env.APP_URL?.trim();
+  if (!configuredUrl) {
+    throw new PortalError('Set APP_URL to the hosted application URL before sending email links.', 500);
+  }
+
+  let url: URL;
+  try {
+    url = new URL(configuredUrl);
+  } catch {
+    throw new PortalError('APP_URL must be a valid hosted application URL.', 500);
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new PortalError('APP_URL must use HTTP or HTTPS.', 500);
+  }
+  if (['localhost', '127.0.0.1', '[::1]', '0.0.0.0'].includes(url.hostname.toLowerCase())) {
+    throw new PortalError('APP_URL must point to the hosted application, not a local address.', 500);
+  }
+  return url.origin;
+};
+
 const stripCandidatePrivateFields = ({
   documents: _documents,
   adminReviewScores: _adminReviewScores,
@@ -417,9 +438,8 @@ export function createPortalRouter(): Router {
         questionPrompt: typeof questionPrompt === 'string' ? questionPrompt : undefined,
         questionPrompts: Array.isArray(parsedQuestionPrompts) ? parsedQuestionPrompts.filter((prompt): prompt is string => typeof prompt === 'string' && Boolean(prompt.trim())) : undefined,
       });
-      const origin = process.env.APP_URL || `${request.protocol}://${request.get('host')}`;
       const emailNotice = await attemptEmail(`Could not email ${invite.type} invitation`, () =>
-        emailService.sendInvite(invite, `${origin}/?portal=${invite.type}&token=${encodeURIComponent(invite.token)}`));
+        emailService.sendInvite(invite, `${getPublicAppUrl()}/?portal=${invite.type}&token=${encodeURIComponent(invite.token)}`));
       response.status(201).json({ ...invite, emailSent: !emailNotice, emailNotice });
     } catch (error) {
       next(error);
@@ -484,9 +504,8 @@ export function createPortalRouter(): Router {
       const invite = await repository.getInviteForNotification(request.params.id);
       if (invite?.token) {
         invite.expiresAt = expiresAt.toISOString();
-        const origin = process.env.APP_URL || `${request.protocol}://${request.get('host')}`;
         emailNotice = await attemptEmail('Could not email updated link expiry', () =>
-          emailService.sendExpiryUpdated(invite, `${origin}/?portal=${invite.type}&token=${encodeURIComponent(invite.token)}`));
+          emailService.sendExpiryUpdated(invite, `${getPublicAppUrl()}/?portal=${invite.type}&token=${encodeURIComponent(invite.token)}`));
         shareToken = invite.token;
         shareType = invite.type;
       } else {
@@ -593,12 +612,10 @@ export function createPortalRouter(): Router {
       }
       const emailNotices: string[] = [];
       if (firstVideo) {
-        const origin = process.env.APP_URL || `${request.protocol}://${request.get('host')}`;
-        const portalUrl = `${origin}/`;
         const candidateEmailNotice = await attemptEmail('Could not send candidate upload confirmation', () =>
           emailService.sendCandidateUploadConfirmation(firstVideo, result.length));
         const adminEmailNotice = await attemptEmail('Could not notify admin of candidate upload', () =>
-          emailService.sendAdminSubmissionReceived(firstVideo, result.length, portalUrl));
+          emailService.sendAdminSubmissionReceived(firstVideo, result.length, `${getPublicAppUrl()}/`));
         if (candidateEmailNotice) emailNotices.push(`Candidate confirmation: ${candidateEmailNotice}`);
         if (adminEmailNotice) emailNotices.push(`Admin notification: ${adminEmailNotice}`);
       }
@@ -636,12 +653,11 @@ export function createPortalRouter(): Router {
         icon: 'upload_file',
         submissionId,
       });
-      const origin = process.env.APP_URL || `${request.protocol}://${request.get('host')}`;
       const emailNotices = [
         await attemptEmail('Could not send candidate reupload confirmation', () =>
           emailService.sendCandidateUploadConfirmation(result, 1)),
         await attemptEmail('Could not notify admin of candidate reupload', () =>
-          emailService.sendAdminSubmissionUpdated(result, `${origin}/`)),
+          emailService.sendAdminSubmissionUpdated(result, `${getPublicAppUrl()}/`)),
       ].filter(Boolean);
       response.json({ video: stripCandidatePrivateFields(result), emailNotice: emailNotices.join(' ') });
     } catch (error) {
