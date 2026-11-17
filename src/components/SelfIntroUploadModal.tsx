@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Loader2, Video } from 'lucide-react';
 import { CandidateAnswerMode, CandidateVideo, User } from '../types';
 import { CandidateVideoResponseInput } from './CandidateVideoResponseInput';
-import { compressVideo } from '../utils/compressVideo';
+import { uploadWithProgress } from '../utils/uploadWithProgress';
 
 interface SelfIntroUploadModalProps {
   currentUser: User;
@@ -62,6 +62,7 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
   const [answers, setAnswers] = useState<(File | null)[]>(() => questions.map(() => null));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -77,10 +78,7 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
         setUploadError(`Provide a video response for each of the ${questions.length} requested question${questions.length === 1 ? '' : 's'} before submitting.`);
         return;
       }
-      const uploadAnswers: File[] = [];
-      for (const answer of submittedAnswers) {
-        uploadAnswers.push(await compressVideo(answer));
-      }
+      const uploadAnswers = submittedAnswers;
       let newVideos: CandidateVideo[];
       let emailNotice = '';
       if (linkToken) {
@@ -106,10 +104,11 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
         formData.append('bio', '');
         formData.append('keySkills', '');
         uploadAnswers.forEach((file) => formData.append('videos', file));
-        const response = await fetch(`/api/public/links/${encodeURIComponent(linkToken)}/upload`, {
-          method: 'POST',
-          body: formData,
-        });
+        const response = await uploadWithProgress(
+          `/api/public/links/${encodeURIComponent(linkToken)}/upload`,
+          formData,
+          setUploadProgress,
+        );
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Video upload failed.');
         if (!Array.isArray(result.videos) || result.videos.length !== questions.length) {
@@ -144,6 +143,7 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
       setUploadError(error instanceof Error ? error.message : 'Video upload failed.');
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -219,7 +219,9 @@ export const SelfIntroUploadModal: React.FC<SelfIntroUploadModalProps> = ({
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                  Uploading videos...
+                  {uploadProgress === null
+                    ? 'Starting upload...'
+                    : uploadProgress >= 100 ? 'Saving submission...' : `Uploading videos... ${uploadProgress}%`}
                 </span>
               ) : 'Submit all video responses'}
             </button>

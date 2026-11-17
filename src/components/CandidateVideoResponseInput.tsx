@@ -90,7 +90,11 @@ export const CandidateVideoResponseInput: React.FC<CandidateVideoResponseInputPr
 
       const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/mp4']
         .find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = new MediaRecorder(requestedStream, mimeType ? { mimeType } : undefined);
+      const recorder = new MediaRecorder(requestedStream, {
+        ...(mimeType ? { mimeType } : {}),
+        videoBitsPerSecond: 1_500_000,
+        audioBitsPerSecond: 96_000,
+      });
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size) chunksRef.current.push(event.data);

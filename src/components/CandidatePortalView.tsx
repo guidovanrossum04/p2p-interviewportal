@@ -3,7 +3,7 @@ import { Camera, Loader2, Upload } from 'lucide-react';
 import { CandidateAnswerMode, CandidateVideo, InviteLink, User } from '../types';
 import { SelfIntroUploadModal } from './SelfIntroUploadModal';
 import { CandidateVideoResponseInput } from './CandidateVideoResponseInput';
-import { compressVideo } from '../utils/compressVideo';
+import { uploadWithProgress } from '../utils/uploadWithProgress';
 import { groupVideosBySubmission } from '../utils/submissions';
 import p2pLogo from '../../assets/p2plogo.webp';
 
@@ -19,6 +19,7 @@ const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, questionNumber
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const submitRetake = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -29,7 +30,6 @@ const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, questionNumber
     setIsSubmitting(true);
     setError(null);
     try {
-      const uploadFile = await compressVideo(file);
       const formData = new FormData();
       formData.append('candidateName', video.candidateName);
       formData.append('candidateEmail', video.candidateEmail);
@@ -39,11 +39,12 @@ const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, questionNumber
       formData.append('submissionType', video.submissionType || 'self_introduction');
       formData.append('bio', video.bio || '');
       formData.append('keySkills', (video.keySkills || []).join(','));
-      formData.append('videos', uploadFile);
-      const response = await fetch(`/api/public/links/${encodeURIComponent(linkToken)}/reupload/${encodeURIComponent(video.id)}`, {
-        method: 'POST',
-        body: formData,
-      });
+      formData.append('videos', file);
+      const response = await uploadWithProgress(
+        `/api/public/links/${encodeURIComponent(linkToken)}/reupload/${encodeURIComponent(video.id)}`,
+        formData,
+        setUploadProgress,
+      );
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not upload the requested replacement video.');
       if (!result.video) throw new Error('The server did not confirm the replacement upload.');
@@ -52,6 +53,7 @@ const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, questionNumber
       setError(submitError instanceof Error ? submitError.message : 'Could not upload the requested replacement video.');
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -70,7 +72,11 @@ const RequestedRetake: React.FC<RequestedRetakeProps> = ({ video, questionNumber
         </div>
         <button type="submit" disabled={!file || isSubmitting || !linkToken} className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">
           {isSubmitting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
-          {isSubmitting ? 'Uploading...' : answerMode === 'record' ? 'Submit recorded video' : 'Upload replacement video'}
+          {isSubmitting
+            ? uploadProgress === null
+              ? 'Starting upload...'
+              : uploadProgress >= 100 ? 'Saving submission...' : `Uploading... ${uploadProgress}%`
+            : answerMode === 'record' ? 'Submit recorded video' : 'Upload replacement video'}
         </button>
       </div>
       {error && <p role="alert" className="mt-2 text-xs font-semibold text-red-700">{error}</p>}
